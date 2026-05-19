@@ -40,8 +40,8 @@ disable_proxy
 # Mirror & suite replacement
 restore_mirror
 
-# Reload sources.list
-#sources_list
+# Reload kali.sources
+#kali_sources
 
 # Choose a locale
 set_locale "$locale"

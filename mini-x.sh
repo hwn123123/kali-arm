@@ -212,9 +212,14 @@ chmod 0755 ${work_dir}/usr/bin/dpkg
 # debootstrap second stage
 systemd-nspawn_exec eatmydata /debootstrap/debootstrap --second-stage
 
-cat <<EOF >${work_dir}/etc/apt/sources.list
-deb ${mirror} ${suite} ${components//,/ }
-#deb-src ${mirror} ${suite} ${components//,/ }
+rm -f /etc/apt/sources.list
+cat <<EOF >${work_dir}/etc/apt/sources.list.d/kali.sources
+# See https://www.kali.org/docs/general-use/kali-apt-sources/
+Types: deb
+URIs: ${mirror%/}/
+Suites: ${suite}
+Components: ${components//,/ }
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
 EOF
 
 # Set hostname
@@ -382,10 +387,14 @@ if [[ ! -z "${4}" || ! -z "${5}" ]]; then
 
 fi
 
-# Define sources.list
-cat <<EOF >${work_dir}/etc/apt/sources.list
-deb ${mirror} ${suite} ${components//,/ }
-#deb-src ${mirror} ${suite} ${components//,/ }
+# Define kali.sources
+cat <<EOF >${work_dir}/etc/apt/sources.list.d/kali.sources
+# See https://www.kali.org/docs/general-use/kali-apt-sources/
+Types: deb
+URIs: ${mirror%/}/
+Suites: ${suite}
+Components: ${components//,/ }
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
 EOF
 
 # Build system will insert it's root filesystem into the extlinux.conf file so

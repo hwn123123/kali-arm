@@ -34,8 +34,8 @@ include packages
 # Execute initial debootstrap
 debootstrap_exec ${mirror}
 
-# Define sources.list
-sources_list
+# Define kali.sources
+kali_sources
 
 # APT options
 include apt_options

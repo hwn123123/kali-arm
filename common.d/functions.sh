@@ -282,14 +282,15 @@ function restore_mirror() {
         suite="${replace_suite}"
     fi
 
-    log "Setting APT sources to mirror: ${mirror}, suite: ${suite}" gray
+    log "Setting APT sources to mirror: ${mirror%/}/, suite: ${suite}" gray
 
-    cat <<EOF >"${work_dir}/etc/apt/sources.list"
-# See https://www.kali.org/docs/general-use/kali-linux-sources-list-repositories/
-deb ${mirror} ${suite} main contrib non-free non-free-firmware
-
-# Additional line for source packages
-# deb-src ${mirror} ${suite} main contrib non-free non-free-firmware
+    cat <<EOF >"${work_dir}/etc/apt/sources.list.d/kali.sources"
+# See https://www.kali.org/docs/general-use/kali-apt-sources/
+Types: deb
+URIs: ${mirror%/}/
+Suites: ${suite}
+Components: main contrib non-free non-free-firmware
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
 EOF
 }
 
@@ -350,13 +351,22 @@ function limit_cpu() {
     return $exit_code
 }
 
-function sources_list() {
-    # Define sources.list
-    log "✅ define sources.list" green
-    cat <<EOF >"${work_dir}"/etc/apt/sources.list
-deb ${mirror} ${suite} ${components//,/ }
-#deb-src ${mirror} ${suite} ${components//,/ }
+function kali_sources() {
+    # Define kali.sources
+    log "✅ define kali.sources" green
+    cat <<EOF >"${work_dir}"/etc/apt/sources.list.d/kali.sources
+# See https://www.kali.org/docs/general-use/kali-apt-sources/
+Types: deb
+URIs: ${mirror%/}/
+Suites: ${suite}
+Components: ${components//,/ }
+Signed-By: /usr/share/keyrings/kali-archive-keyring.gpg
 EOF
+    # Remove sources.list if any
+    if [ -e "${work_dir}"/etc/apt/sources.list ]; then
+        log "✅ remove sources.list" green
+        rm -f "${work_dir}"/etc/apt/sources.list
+    fi
 }
 
 # Choose a locale
