@@ -734,3 +734,16 @@ function status() {
     [[ $debug = 1 ]] && timestamp="($(date +"%Y-%m-%d %H:%M:%S"))" || timestamp=""
     log "✅ ${status_i}/${status_t}:${colour_reset} $1 $timestamp" green
 }
+
+find_qemu_static() {
+    local arch="$1"
+    ## Debian <= 12
+    if [ -e "/usr/bin/qemu-${arch}-static" ]; then
+        echo "/usr/bin/qemu-${arch}-static"
+    ## Debian >= 13
+    elif [ -e "/usr/bin/qemu-${arch}" ]; then
+        echo "/usr/bin/qemu-${arch}"
+    else
+        return 1
+    fi
+}

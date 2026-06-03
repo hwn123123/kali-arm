@@ -155,15 +155,15 @@ fi
 
 # Detect architecture
 if [[ "${architecture}" == "arm64" ]]; then
-    qemu_bin="/usr/bin/qemu-aarch64-static"
+    qemu_bin=$(find_qemu_static aarch64) || log "Failed to find QEMU: aarch64/arm64" red
     lib_arch="aarch64-linux-gnu"
 
 elif [[ "${architecture}" == "armhf" ]]; then
-    qemu_bin="/usr/bin/qemu-arm-static"
+    qemu_bin=$(find_qemu_static arm) || log "Failed to find QEMU: arm/armhf" red
     lib_arch="arm-linux-gnueabihf"
 
 elif [[ "${architecture}" == "armel" ]]; then
-    qemu_bin="/usr/bin/qemu-arm-static"
+    qemu_bin=$(find_qemu_static arm) || log "Failed to find QEMU: arm/armel" red
     lib_arch="arm-linux-gnueabi"
 
 fi

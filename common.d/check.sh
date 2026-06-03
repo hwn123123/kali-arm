@@ -19,7 +19,8 @@ if [ ! -e /usr/bin/systemd-nspawn ]; then
 fi
 
 # Check for qemu-user
-if [ ! -e /usr/bin/qemu-aarch64 ]; then
+# Debian >= 13 (qemu-aarch64), Debian <= 12 (qemu-aarch64-static)
+if [ ! -e /usr/bin/qemu-aarch64 ] && [ ! -e /usr/bin/qemu-aarch64-static ]; then
     log "Error: missing QEMU" red
     log "Please run ./commond.d/build_deps.sh" red
 
@@ -67,13 +68,16 @@ fi
 # Detect architecture
 case ${architecture} in
     arm64)
-        qemu_bin="/usr/bin/qemu-aarch64-static"; lib_arch="aarch64-linux-gnu" ;;
+        qemu_bin=$(find_qemu_static aarch64) || log "Failed to find QEMU: aarch64/arm64" red
+        lib_arch="aarch64-linux-gnu" ;;
 
     armhf)
-        qemu_bin="/usr/bin/qemu-arm-static"; lib_arch="arm-linux-gnueabihf" ;;
+        qemu_bin=$(find_qemu_static arm) || log "Failed to find QEMU: arm/armhf" red
+        lib_arch="arm-linux-gnueabihf" ;;
 
     armel)
-        qemu_bin="/usr/bin/qemu-arm-static"; lib_arch="arm-linux-gnueabi" ;;
+        qemu_bin=$(find_qemu_static arm) || log "Failed to find QEMU: arm/armel" red
+        lib_arch="arm-linux-gnueabi" ;;
 
 esac
 
