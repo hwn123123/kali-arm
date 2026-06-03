@@ -121,7 +121,16 @@ mkdir -pv ./local/
 # Create a current list of installed packages
 dpkg --get-selections >${backup_packages}
 
-compilers="crossbuild-essential-arm64 crossbuild-essential-armhf crossbuild-essential-armel gcc-arm-none-eabi"
+# Update list deb packages
+apt-wait update
+
+# Check if crossbuild-essential-armel is available (not avail on Ubuntu)
+if apt-cache show crossbuild-essential-armel >/dev/null 2>&1; then
+    compilers="crossbuild-essential-arm64 crossbuild-essential-armhf crossbuild-essential-armel"
+else
+    compilers="crossbuild-essential-arm64 crossbuild-essential-armhf"
+fi
+compilers="${compilers} gcc-arm-none-eabi"
 
 dependencies="arch-test autoconf automake bc binfmt-support bison build-essential ca-certificates cgpt  \
 cgroup-tools cmake cpio curl dbus debootstrap device-tree-compiler dosfstools e2fsprogs eatmydata fdisk \
@@ -129,9 +138,6 @@ flex gawk git gnupg kpartx libgnutls28-dev libncurses-dev libssl-dev lsb-release
 mmdebstrap parted pixz pkg-config python3-dev qemu-user qemu-user-binfmt rsync swig systemd-container   \
 u-boot-tools uuid-dev vboot-kernel-utils vboot-utils wget xz-utils"
 deps="${dependencies} ${compilers}"
-
-# Update list deb packages
-apt-wait update
 
 # Install dependencies
 apt-wait install_deps
