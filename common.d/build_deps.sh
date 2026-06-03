@@ -123,11 +123,11 @@ dpkg --get-selections >${backup_packages}
 
 compilers="crossbuild-essential-arm64 crossbuild-essential-armhf crossbuild-essential-armel gcc-arm-none-eabi"
 
-dependencies="arch-test autoconf automake bc bison build-essential cgpt cgroup-tools cmake curl dbus \
-debootstrap device-tree-compiler dosfstools e2fsprogs eatmydata flex gawk git gnupg kpartx           \
-libncurses-dev lsb-release libssl-dev lsof lzma lzop m4 make mmdebstrap parted pixz pkg-config       \
-python3-dev qemu-user qemu-user-binfmt rsync swig systemd-container u-boot-tools vboot-kernel-utils vboot-utils \
-libgnutls28-dev uuid-dev"
+dependencies="arch-test autoconf automake bc binfmt-support bison build-essential ca-certificates cgpt  \
+cgroup-tools cmake cpio curl dbus debootstrap device-tree-compiler dosfstools e2fsprogs eatmydata fdisk \
+flex gawk git gnupg kpartx libgnutls28-dev libncurses-dev libssl-dev lsb-release lsof lzma lzop m4 make \
+mmdebstrap parted pixz pkg-config python3-dev qemu-user qemu-user-binfmt rsync swig systemd-container   \
+u-boot-tools uuid-dev vboot-kernel-utils vboot-utils wget xz-utils"
 deps="${dependencies} ${compilers}"
 
 # Update list deb packages
