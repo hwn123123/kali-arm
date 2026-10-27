@@ -17,7 +17,21 @@ source ./common.d/base_image.sh
 basic_network
 
 status "Install shennong rootfs overlay"
-cp -a devices/shennong/rootfs-overlay/. "${work_dir}/"
+# mmdebstrap uses the pre-created host directory as the rootfs mount point.
+# Normalize its owner so the resulting archive never records `/` as the
+# unprivileged build user.
+chown 0:0 "${work_dir}"
+# Preserve file modes and links, but never copy the checkout owner's UID/GID
+# onto security-sensitive rootfs directories such as /etc and /usr.
+cp -a --no-preserve=ownership devices/shennong/rootfs-overlay/. "${work_dir}/"
+
+for root_owned_path in "${work_dir}" "${work_dir}/etc" "${work_dir}/usr" "${work_dir}/var"; do
+    root_owner="$(stat -c '%u:%g' "$root_owned_path")"
+    [ "$root_owner" = "0:0" ] || {
+        log "Unsafe rootfs ownership on ${root_owned_path}: ${root_owner}" red
+        exit 1
+    }
+done
 
 cat <<'EOF' >>"${work_dir}/third-stage"
 status_stage3 'Configure shennong services'
@@ -48,7 +62,10 @@ if [ -n "${SHENNONG_AUTHORIZED_KEY_FILE:-}" ]; then
     }
     install -m600 "$SHENNONG_AUTHORIZED_KEY_FILE" \
         "${work_dir}/home/kali/.ssh/authorized_keys"
-    chown 1000:1000 "${work_dir}/home/kali/.ssh/authorized_keys"
+    kali_uid="$(awk -F: '$1 == "kali" { print $3 }' "${work_dir}/etc/passwd")"
+    kali_gid="$(awk -F: '$1 == "kali" { print $4 }' "${work_dir}/etc/passwd")"
+    chown "${kali_uid}:${kali_gid}" \
+        "${work_dir}/home/kali/.ssh/authorized_keys"
 fi
 
 kernel_release="6.1.138-android14-11-g0c3d559bcd85-ab14529422"
