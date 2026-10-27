@@ -22,7 +22,8 @@ triggerhappy usbutils whiptail zerofree"
 
 services="apache2 atftpd openvpn ssh tightvncserver"
 
-extra_custom_pkgs=""
+# Device scripts may seed this before loading common.d/base_image.sh.
+extra_custom_pkgs="${extra_custom_pkgs:-}"
 
 # This is the list of most cli based tools
 cli_tools_pkgs="kali-linux-headless"

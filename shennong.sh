@@ -10,7 +10,7 @@ hw_model=${hw_model:-"shennong"}
 architecture=${architecture:-"arm64"}
 desktop=${desktop:-"xfce"}
 hostname=${hostname:-"kali-shennong"}
-extra_custom_pkgs="busybox-static kmod usbutils libdrm2 ${extra_custom_pkgs:-}"
+extra_custom_pkgs="busybox-static file kmod usbutils libdrm2 ${extra_custom_pkgs:-}"
 
 source ./common.d/base_image.sh
 
