@@ -9,6 +9,7 @@ export HOME=/root
 BB=/bin/busybox
 ROOT_MOUNT=/newroot
 MODULE_DIR=/lib/modules
+FIRMWARE_PATHS=/vendor/firmware_mnt/image,/vendor/firmware_mnt/image/kiwi,/vendor/modem_firmware/image
 
 log() {
     message="shennong-init: $*"
@@ -33,25 +34,12 @@ mount -t proc proc /proc || emergency_shell "cannot mount proc"
 mount -t sysfs sysfs /sys || emergency_shell "cannot mount sysfs"
 mount -t tmpfs tmpfs /run || true
 
-log "loading ordered Xiaomi/Qualcomm early modules"
-if [ -r "$MODULE_DIR/modules.load" ]; then
-    while IFS= read -r module; do
-        case "$module" in
-            ""|\#*) continue ;;
-        esac
-        if [ -r "$MODULE_DIR/$module" ]; then
-            insmod "$MODULE_DIR/$module" 2>/dev/null || true
-        fi
-    done <"$MODULE_DIR/modules.load"
-else
-    log "vendor modules.load not found; continuing with built-in drivers"
-fi
-
-find_linux_root() {
+find_partition() {
+    partition_name="$1"
     for candidate in \
-        /dev/block/by-name/linux_root \
-        /dev/block/bootdevice/by-name/linux_root \
-        /dev/disk/by-partlabel/linux_root; do
+        "/dev/block/by-name/$partition_name" \
+        "/dev/block/bootdevice/by-name/$partition_name" \
+        "/dev/disk/by-partlabel/$partition_name"; do
         [ -b "$candidate" ] && {
             printf '%s\n' "$candidate"
             return 0
@@ -60,7 +48,7 @@ find_linux_root() {
 
     for uevent in /sys/class/block/*/uevent; do
         [ -r "$uevent" ] || continue
-        if grep -qx 'PARTNAME=linux_root' "$uevent"; then
+        if grep -qx "PARTNAME=$partition_name" "$uevent"; then
             block_name=${uevent%/uevent}
             block_name=${block_name##*/}
             for candidate in "/dev/block/$block_name" "/dev/$block_name"; do
@@ -75,15 +63,57 @@ find_linux_root() {
 }
 
 linux_root=
+firmware_partition=
+modem_firmware_partition=
 attempt=0
 while [ "$attempt" -lt 40 ]; do
     mdev -s 2>/dev/null || true
-    linux_root=$(find_linux_root) && break
+    linux_root=$(find_partition linux_root) || true
+    firmware_partition=$(find_partition modem_a) || true
+    modem_firmware_partition=$(find_partition modemfirmware_a) || true
+    [ -n "$linux_root" ] && [ -n "$firmware_partition" ] && \
+        [ -n "$modem_firmware_partition" ] && break
     attempt=$((attempt + 1))
     sleep 1
 done
 
 [ -n "$linux_root" ] || emergency_shell "linux_root did not appear"
+
+mkdir -p /vendor/firmware_mnt /vendor/modem_firmware
+if [ -n "$firmware_partition" ]; then
+    mount -t vfat -o ro,nosuid,nodev,noexec "$firmware_partition" \
+        /vendor/firmware_mnt || log "failed to mount $firmware_partition"
+else
+    log "modem_a did not appear; early firmware is unavailable"
+fi
+if [ -n "$modem_firmware_partition" ]; then
+    mount -t vfat -o ro,nosuid,nodev,noexec "$modem_firmware_partition" \
+        /vendor/modem_firmware || log "failed to mount $modem_firmware_partition"
+else
+    log "modemfirmware_a did not appear"
+fi
+ln -sfn firmware_mnt/image /vendor/firmware
+
+if [ -w /sys/module/firmware_class/parameters/path ] && \
+   [ -d /vendor/firmware_mnt/image ]; then
+    printf '%s' "$FIRMWARE_PATHS" > \
+        /sys/module/firmware_class/parameters/path || true
+fi
+
+log "loading ordered Xiaomi/Qualcomm early modules"
+if [ -r "$MODULE_DIR/modules.load" ]; then
+    while IFS= read -r module; do
+        case "$module" in
+            ""|\#*) continue ;;
+        esac
+        if [ -r "$MODULE_DIR/$module" ]; then
+            insmod "$MODULE_DIR/$module" 2>/dev/null || true
+        fi
+    done <"$MODULE_DIR/modules.load"
+else
+    log "vendor modules.load not found; continuing with built-in drivers"
+fi
+
 log "mounting Kali root from $linux_root"
 mount -t ext4 -o rw,noatime "$linux_root" "$ROOT_MOUNT" || \
     emergency_shell "failed to mount linux_root as ext4"
@@ -92,7 +122,19 @@ mount -t ext4 -o rw,noatime "$linux_root" "$ROOT_MOUNT" || \
     emergency_shell "Kali /sbin/init is missing"
 
 mkdir -p "$ROOT_MOUNT/dev" "$ROOT_MOUNT/dev/pts" "$ROOT_MOUNT/proc" \
-    "$ROOT_MOUNT/sys" "$ROOT_MOUNT/run"
+    "$ROOT_MOUNT/sys" "$ROOT_MOUNT/run" "$ROOT_MOUNT/vendor/firmware_mnt" \
+    "$ROOT_MOUNT/vendor/modem_firmware"
+
+if grep -q ' /vendor/firmware_mnt ' /proc/mounts; then
+    mount --move /vendor/firmware_mnt "$ROOT_MOUNT/vendor/firmware_mnt" || \
+        log "failed to move firmware_mnt into Kali root"
+fi
+if grep -q ' /vendor/modem_firmware ' /proc/mounts; then
+    mount --move /vendor/modem_firmware "$ROOT_MOUNT/vendor/modem_firmware" || \
+        log "failed to move modem_firmware into Kali root"
+fi
+ln -sfn firmware_mnt/image "$ROOT_MOUNT/vendor/firmware"
+
 mount --move /dev "$ROOT_MOUNT/dev"
 mount --move /proc "$ROOT_MOUNT/proc"
 mount --move /sys "$ROOT_MOUNT/sys"

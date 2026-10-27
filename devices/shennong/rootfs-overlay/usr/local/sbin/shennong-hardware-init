@@ -2,6 +2,8 @@
 
 set -eu
 
+firmware_paths=/vendor/firmware_mnt/image,/vendor/firmware_mnt/image/kiwi,/vendor/modem_firmware/image
+
 log() {
     printf 'shennong-hardware: %s\n' "$*"
 }
@@ -32,14 +34,20 @@ mount_read_only() {
         log "could not mount $device at $target"
 }
 
-# These shared firmware partitions are never written by Kali.
-mount_read_only modem /opt/shennong-vendor/firmware_mnt vfat
-mount_read_only modemfirmware /opt/shennong-vendor/modem_firmware vfat
+# These shared firmware partitions are never written by Kali. Slot A is the
+# verified working firmware source even while the Linux boot chain uses slot B.
+mount_read_only modem_a /vendor/firmware_mnt vfat
+mount_read_only modemfirmware_a /vendor/modem_firmware vfat
 mount_read_only persist /opt/shennong-vendor/persist ext4
 
+mkdir -p /opt/shennong-vendor /vendor
+ln -sfn /vendor/firmware_mnt /opt/shennong-vendor/firmware_mnt
+ln -sfn /vendor/modem_firmware /opt/shennong-vendor/modem_firmware
+ln -sfn firmware_mnt/image /vendor/firmware
+
 if [ -w /sys/module/firmware_class/parameters/path ] && \
-   [ -d /opt/shennong-vendor/firmware_mnt/image ]; then
-    printf '%s' /opt/shennong-vendor/firmware_mnt/image > \
+   [ -d /vendor/firmware_mnt/image ]; then
+    printf '%s' "$firmware_paths" > \
         /sys/module/firmware_class/parameters/path || true
 fi
 

@@ -28,13 +28,19 @@ The current test phone has this verified layout:
 | Experimental system | slot B boot chain |
 | Linux root partition | `/dev/block/by-name/linux_root` |
 | GPT partition | `sda34` at the time of verification |
-| Start sector | `609583056` (512-byte sectors) |
-| Size | `419430400` sectors / exactly 200 GiB |
+| Disk logical sector | 4096 bytes |
+| Start sector | `76197882` (4096-byte GPT sectors) |
+| End sector | `128626681` |
+| Size | `52428800` sectors / exactly 200 GiB |
 | Filesystem | intentionally unformatted until installation |
 | Recovery | custom slot-B multiboot recovery v1.6 |
 
 Never hard-code `sda34` in an installer. Resolve the partition by GPT name
-`linux_root` and validate its exact size before formatting it.
+`linux_root` and validate the disk GUID, partition GUID, sector range and exact
+byte size before formatting it. The equivalent start and size in 512-byte
+units are `609583056` and `419430400`; those are not the GPT sector units
+reported by this UFS device. The machine-readable contract is
+[`reference/linux-root-layout-v1.json`](reference/linux-root-layout-v1.json).
 
 ## Verified private inputs
 
@@ -81,7 +87,20 @@ devices/shennong/tools/verify-private-inputs.sh \
    Omit `--minimal` for the default XFCE image. The artifact is written to
    `images/` as a `tar.zst`, not as a repartitioned phone image.
 
-2. Build a slot-B `init_boot` image from verified private inputs:
+2. Convert the validated rootfs archive into an Android sparse ext4 image for
+   the exact 200 GiB `linux_root` partition:
+
+   ```bash
+   sudo devices/shennong/tools/build-linux-root-image.sh \
+     images/kali-linux-rolling-shennong-minimal-arm64-rootfs.tar.zst \
+     devices/shennong/out/linux_root-kali.simg
+   ```
+
+   The builder verifies the rootfs checksum and metadata, constructs the
+   filesystem in a temporary sparse file, runs `e2fsck`, converts it with
+   `img2simg`, and emits a portable SHA256 file. It never connects to a phone.
+
+3. Build a slot-B `init_boot` image from verified private inputs:
 
    ```bash
    devices/shennong/tools/build-init-boot.sh \
@@ -92,23 +111,42 @@ devices/shennong/tools/verify-private-inputs.sh \
 
    Set `MAGISKBOOT=/path/to/magiskboot` when it is not in `PATH`.
 
-3. Installation will be handled by a separate guarded recovery-side tool. It
-   must verify `linux_root`, format only that partition, extract the Kali
-   rootfs, then write only slot-B boot-chain partitions. No current script in
-   this repository formats or flashes the phone.
+4. The recovery-side guard can inspect the dedicated partition without
+   modifying it:
+
+   ```sh
+   devices/shennong/recovery/linux-rootctl.sh status
+   ```
+
+   Formatting is deliberately gated by the literal destructive token and is
+   the only write operation in that tool:
+
+   ```sh
+   devices/shennong/recovery/linux-rootctl.sh \
+     prepare-ext4 ERASE-LINUX-ROOT
+   ```
+
+   The guard refuses to continue unless the exact disk GUID, partition GUID,
+   type GUID, sector range and 200 GiB byte size match the recorded device.
+   It never writes Android `userdata`, slot A or any boot-chain partition.
+   Rootfs deployment and slot-B flashing remain separate release steps and
+   must pass their own validation before being added here.
 
 ## Bring-up order
 
 The port is intentionally staged so failures remain diagnosable:
 
 1. stock kernel plus stock vendor ramdisk loads the UFS stack;
-2. custom initramfs mounts `linux_root` and starts Kali's systemd;
-3. USB/serial or SSH access and persistent logs;
-4. display and touch;
-5. Wi-Fi/Bluetooth and audio;
-6. modem/telephony compatibility bridge;
-7. camera compatibility bridge;
-8. optional rebuilt kernel features such as namespaces needed by Docker.
+2. custom initramfs mounts the verified slot-A firmware partitions read-only,
+   loads ordered Xiaomi/Qualcomm modules, then mounts `linux_root`;
+3. the firmware mounts move into Kali at the paths expected by the stock
+   kernel, and the initramfs starts Kali's systemd;
+4. USB/serial or SSH access and persistent logs;
+5. display and touch;
+6. Wi-Fi/Bluetooth and audio;
+7. modem/telephony compatibility bridge;
+8. camera compatibility bridge;
+9. optional rebuilt kernel features such as namespaces needed by Docker.
 
 Telephony and camera need proprietary Android userspace services in addition
 to kernel drivers. They will be isolated under `/opt/shennong-vendor` or in a

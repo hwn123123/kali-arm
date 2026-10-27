@@ -88,6 +88,11 @@ output_size="$(stat -c '%s' "$output_image")"
     exit 1
 }
 
-sha256sum "$output_image" >"$output_image.sha256"
+output_dir="$(dirname -- "$output_image")"
+output_name="$(basename -- "$output_image")"
+(
+    cd -- "$output_dir"
+    sha256sum "$output_name" >"${output_name}.sha256"
+)
 echo "Created $output_image ($output_size bytes)"
 echo "Slot A was not read from or modified by this operation."
