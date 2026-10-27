@@ -26,9 +26,11 @@ chown 0:0 "${work_dir}"
 cp -a --no-preserve=ownership devices/shennong/rootfs-overlay/. "${work_dir}/"
 
 for root_owned_path in "${work_dir}" "${work_dir}/etc" "${work_dir}/usr" "${work_dir}/var"; do
-    root_owner="$(stat -c '%u:%g' "$root_owned_path")"
-    [ "$root_owner" = "0:0" ] || {
-        log "Unsafe rootfs ownership on ${root_owned_path}: ${root_owner}" red
+    chown 0:0 "$root_owned_path"
+    chmod 0755 "$root_owned_path"
+    root_metadata="$(stat -c '%u:%g %a' "$root_owned_path")"
+    [ "$root_metadata" = "0:0 755" ] || {
+        log "Unsafe rootfs metadata on ${root_owned_path}: ${root_metadata}" red
         exit 1
     }
 done
@@ -90,10 +92,15 @@ if [ -n "${SHENNONG_KERNEL_BUNDLE:-}" ]; then
     cp -a "$module_stage/staging/modules/system_dlkm/${kernel_release}/." "$module_root/"
     cp -a "$module_stage/staging/modules/vendor_boot/." "$module_root/extra/vendor_boot/"
     cp -a "$module_stage/staging/modules/vendor_dlkm/." "$module_root/extra/vendor_dlkm/"
+    chown -R 0:0 "$module_root"
     find "$module_root" -maxdepth 3 -type f \
         \( -name 'modules.load' -o -name 'modules.blocklist' -o -name 'modules.dep' \
         -o -name 'modules.alias' -o -name 'modules.softdep' \) -delete
     depmod -b "$work_dir" "$kernel_release"
+    if find "$module_root" \( ! -user root -o ! -group root \) -print -quit | grep -q .; then
+        log "Refusing kernel modules with non-root ownership" red
+        exit 1
+    fi
     rm -rf "$module_stage"
 else
     log "SHENNONG_KERNEL_BUNDLE is unset; artifact is rootfs-only and not flash-ready" yellow
