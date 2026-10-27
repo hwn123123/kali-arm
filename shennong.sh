@@ -24,6 +24,8 @@ chown 0:0 "${work_dir}"
 # Preserve file modes and links, but never copy the checkout owner's UID/GID
 # onto security-sensitive rootfs directories such as /etc and /usr.
 cp -a --no-preserve=ownership devices/shennong/rootfs-overlay/. "${work_dir}/"
+chmod 0755 "${work_dir}/usr/local/sbin/shennong-hardware-init"
+chmod 0644 "${work_dir}/etc/systemd/system/shennong-hardware.service"
 
 for root_owned_path in "${work_dir}" "${work_dir}/etc" "${work_dir}/usr" "${work_dir}/var"; do
     chown 0:0 "$root_owned_path"
@@ -122,12 +124,40 @@ EOF
 
 include clean_system
 
+status "Validate shennong rootfs metadata"
+validate_metadata() {
+    local path="$1"
+    local expected="$2"
+    local actual
+    actual="$(stat -c '%u:%g %a' "$path")"
+    [ "$actual" = "$expected" ] || {
+        log "Unsafe rootfs metadata on ${path}: ${actual}; expected ${expected}" red
+        exit 1
+    }
+}
+
+validate_metadata "${work_dir}" "0:0 755"
+validate_metadata "${work_dir}/etc" "0:0 755"
+validate_metadata "${work_dir}/usr" "0:0 755"
+validate_metadata "${work_dir}/var" "0:0 755"
+validate_metadata "${work_dir}/etc/fstab" "0:0 644"
+validate_metadata "${work_dir}/etc/systemd/system/shennong-hardware.service" "0:0 644"
+validate_metadata "${work_dir}/usr/local/sbin/shennong-hardware-init" "0:0 755"
+if [ -n "${SHENNONG_AUTHORIZED_KEY_FILE:-}" ]; then
+    validate_metadata "${work_dir}/home/kali/.ssh/authorized_keys" \
+        "${kali_uid}:${kali_gid} 600"
+fi
+
 status "Create shennong Kali rootfs archive"
 mkdir -p "$image_dir"
 rootfs_archive="${image_dir}/${image_name}-rootfs.tar.zst"
 tar --numeric-owner --xattrs --acls --one-file-system -C "$work_dir" -cpf - . | \
     zstd -T0 -19 -f -o "$rootfs_archive"
-sha256sum "$rootfs_archive" >"$rootfs_archive.sha256sum"
+rootfs_archive_name="$(basename "$rootfs_archive")"
+(
+    cd "$image_dir"
+    sha256sum "$rootfs_archive_name" >"${rootfs_archive_name}.sha256sum"
+)
 chmod 0644 "$rootfs_archive" "$rootfs_archive.sha256sum"
 
 log "Your shennong rootfs is: $rootfs_archive" bold
