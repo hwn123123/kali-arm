@@ -136,7 +136,7 @@ dependencies="arch-test autoconf automake bc binfmt-support bison build-essentia
 cgroup-tools cmake cpio curl dbus debootstrap device-tree-compiler dosfstools e2fsprogs eatmydata fdisk \
 flex gawk git gnupg kpartx libgnutls28-dev libncurses-dev libssl-dev lsb-release lsof lzma lzop m4 make \
 mmdebstrap parted pixz pkg-config python3-dev qemu-user qemu-user-binfmt rsync swig systemd-container   \
-u-boot-tools uuid-dev vboot-kernel-utils vboot-utils wget xz-utils"
+u-boot-tools uuid-dev vboot-kernel-utils vboot-utils wget xz-utils zstd"
 deps="${dependencies} ${compilers}"
 
 # Install dependencies

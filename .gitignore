@@ -8,6 +8,10 @@ images/*
 builder.txt
 .DS_Store
 
+# Xiaomi proprietary inputs and generated shennong boot artifacts
+devices/shennong/vendor/
+devices/shennong/out/
+
 # GitLab pages
 public/
 

@@ -1,0 +1,8 @@
+# Xiaomi 14 Pro (shennong), OS3.0.308.0.WNBCNXM, verified stock A-slot inputs.
+# Proprietary images are intentionally not stored in this repository.
+1dab6b5799ed7db7e84648e761981b2001e5b5b22dee1fac040a97b2c337e923  boot_a.img
+d0bb4390db0bcc54014e985743076a01ba896d43d66d1d5921e10cafff3f16da  init_boot_a.img
+07ec90a770c41ea5a0a7a03698c26773a15426dcf87fd4b2c4eac350f1ec7acc  vendor_boot_a.img
+2300821865c3dff04c2e25f0ec0cd6bc460c03e1176202ad2b87623a92c6eaf1  dtbo_a.img
+658a56ae8db8ac665f565391b467d24c89887b71a7d877d675b908e3b440958e  vbmeta_a.img
+52768624896a9ff703ea4948cf6b983597030132ff2a0c78e4f67a025aacf1f8  vbmeta_system_a.img

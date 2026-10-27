@@ -1,0 +1,46 @@
+#!/bin/sh
+
+set -eu
+
+log() {
+    printf 'shennong-hardware: %s\n' "$*"
+}
+
+mount_read_only() {
+    partition="$1"
+    target="$2"
+    filesystem="${3:-auto}"
+
+    device=
+    for candidate in \
+        "/dev/disk/by-partlabel/$partition" \
+        "/dev/block/by-name/$partition" \
+        "/dev/block/bootdevice/by-name/$partition"; do
+        if [ -b "$candidate" ]; then
+            device="$candidate"
+            break
+        fi
+    done
+
+    [ -n "$device" ] || {
+        log "partition $partition is not available"
+        return 0
+    }
+    mkdir -p "$target"
+    mountpoint -q "$target" && return 0
+    mount -t "$filesystem" -o ro,nosuid,nodev "$device" "$target" || \
+        log "could not mount $device at $target"
+}
+
+# These shared firmware partitions are never written by Kali.
+mount_read_only modem /opt/shennong-vendor/firmware_mnt vfat
+mount_read_only modemfirmware /opt/shennong-vendor/modem_firmware vfat
+mount_read_only persist /opt/shennong-vendor/persist ext4
+
+if [ -w /sys/module/firmware_class/parameters/path ] && \
+   [ -d /opt/shennong-vendor/firmware_mnt/image ]; then
+    printf '%s' /opt/shennong-vendor/firmware_mnt/image > \
+        /sys/module/firmware_class/parameters/path || true
+fi
+
+log "hardware compatibility setup complete"

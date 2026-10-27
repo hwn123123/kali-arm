@@ -1,0 +1,12 @@
+[Unit]
+Description=Xiaomi 14 Pro hardware compatibility setup
+After=local-fs.target systemd-modules-load.service
+Before=NetworkManager.service display-manager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/shennong-hardware-init
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

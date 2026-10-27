@@ -1,0 +1,104 @@
+#!/bin/busybox sh
+
+# PID 1 for the first shennong Kali bring-up. The stock vendor ramdisk is
+# concatenated by the Android boot flow and supplies /lib/modules.
+
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin
+export HOME=/root
+
+BB=/bin/busybox
+ROOT_MOUNT=/newroot
+MODULE_DIR=/lib/modules
+
+log() {
+    message="shennong-init: $*"
+    "$BB" echo "$message" >/dev/kmsg 2>/dev/null || true
+    if [ -w /dev/pmsg0 ]; then
+        "$BB" echo "$message" >/dev/pmsg0 2>/dev/null || true
+    fi
+    "$BB" echo "$message"
+}
+
+emergency_shell() {
+    log "$*"
+    log "Dropping to the initramfs shell; slot A has not been modified."
+    exec "$BB" sh
+}
+
+"$BB" --install -s /bin
+mkdir -p /dev /dev/pts /proc /sys /run "$ROOT_MOUNT"
+mount -t devtmpfs devtmpfs /dev || emergency_shell "cannot mount devtmpfs"
+mount -t devpts devpts /dev/pts || true
+mount -t proc proc /proc || emergency_shell "cannot mount proc"
+mount -t sysfs sysfs /sys || emergency_shell "cannot mount sysfs"
+mount -t tmpfs tmpfs /run || true
+
+log "loading ordered Xiaomi/Qualcomm early modules"
+if [ -r "$MODULE_DIR/modules.load" ]; then
+    while IFS= read -r module; do
+        case "$module" in
+            ""|\#*) continue ;;
+        esac
+        if [ -r "$MODULE_DIR/$module" ]; then
+            insmod "$MODULE_DIR/$module" 2>/dev/null || true
+        fi
+    done <"$MODULE_DIR/modules.load"
+else
+    log "vendor modules.load not found; continuing with built-in drivers"
+fi
+
+find_linux_root() {
+    for candidate in \
+        /dev/block/by-name/linux_root \
+        /dev/block/bootdevice/by-name/linux_root \
+        /dev/disk/by-partlabel/linux_root; do
+        [ -b "$candidate" ] && {
+            printf '%s\n' "$candidate"
+            return 0
+        }
+    done
+
+    for uevent in /sys/class/block/*/uevent; do
+        [ -r "$uevent" ] || continue
+        if grep -qx 'PARTNAME=linux_root' "$uevent"; then
+            block_name=${uevent%/uevent}
+            block_name=${block_name##*/}
+            for candidate in "/dev/block/$block_name" "/dev/$block_name"; do
+                [ -b "$candidate" ] && {
+                    printf '%s\n' "$candidate"
+                    return 0
+                }
+            done
+        fi
+    done
+    return 1
+}
+
+linux_root=
+attempt=0
+while [ "$attempt" -lt 40 ]; do
+    mdev -s 2>/dev/null || true
+    linux_root=$(find_linux_root) && break
+    attempt=$((attempt + 1))
+    sleep 1
+done
+
+[ -n "$linux_root" ] || emergency_shell "linux_root did not appear"
+log "mounting Kali root from $linux_root"
+mount -t ext4 -o rw,noatime "$linux_root" "$ROOT_MOUNT" || \
+    emergency_shell "failed to mount linux_root as ext4"
+
+[ -x "$ROOT_MOUNT/sbin/init" ] || \
+    emergency_shell "Kali /sbin/init is missing"
+
+mkdir -p "$ROOT_MOUNT/dev" "$ROOT_MOUNT/dev/pts" "$ROOT_MOUNT/proc" \
+    "$ROOT_MOUNT/sys" "$ROOT_MOUNT/run"
+mount --move /dev "$ROOT_MOUNT/dev"
+mount --move /proc "$ROOT_MOUNT/proc"
+mount --move /sys "$ROOT_MOUNT/sys"
+mount --move /run "$ROOT_MOUNT/run" || true
+
+log "switching to Kali systemd"
+exec switch_root "$ROOT_MOUNT" /sbin/init
+
+emergency_shell "switch_root returned unexpectedly"
