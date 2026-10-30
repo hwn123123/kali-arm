@@ -39,6 +39,8 @@ for input in "$magiskboot" "$mkbootimg" "$avbtool" "$patcher" \
     "$sparse_writer" "$maintenance_script"; do
     [ -f "$input" ] || die "missing input: $input"
 done
+[ -f "$(dirname "$mkbootimg")/gki/generate_gki_certificate.py" ] || \
+    die "mkbootimg GKI helper is missing beside $mkbootimg"
 hash_is "$base_recovery" "$base_sha256"
 hash_is "$assets/bootctl-pixelos17" "$bootctl_sha256"
 hash_is "$assets/sgdisk-current" "$sgdisk_sha256"
@@ -101,6 +103,7 @@ done
 
 raw="$output_dir/shennong-maintenance-recovery-v1.7.raw.img"
 image="$output_dir/shennong-maintenance-recovery-v1.7.img"
+PYTHONPATH="$(dirname "$mkbootimg")${PYTHONPATH:+:$PYTHONPATH}" \
 python3 "$mkbootimg" \
     --header_version 4 \
     --os_version 17.0.0 \
