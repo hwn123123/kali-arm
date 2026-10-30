@@ -1,7 +1,7 @@
 [Unit]
 Description=Xiaomi 14 Pro USB network and SSH management link
 After=local-fs.target shennong-hardware.service
-Before=ssh.service
+Before=NetworkManager.service ssh.service
 Wants=ssh.service
 
 [Service]

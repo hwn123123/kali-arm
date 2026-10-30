@@ -16,7 +16,7 @@ mountpoint -q /sys/kernel/config || \
     mount -t configfs configfs /sys/kernel/config
 
 if [ -d "$gadget" ] && [ -e "$gadget/UDC" ]; then
-    printf '' >"$gadget/UDC" || true
+    printf '\n' >"$gadget/UDC" || true
 fi
 
 mkdir -p \
