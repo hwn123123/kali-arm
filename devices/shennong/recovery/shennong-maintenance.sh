@@ -54,11 +54,23 @@ while true; do
                 publish error-sparse-write
                 continue
             fi
-            publish checking-ext4
+            publish checking-staging-ext4
             /system/bin/e2fsck -f -y "$root"
             check_result=$?
             if [ "$check_result" -gt 1 ]; then
                 publish error-e2fsck-$check_result
+                continue
+            fi
+            publish expanding-ext4-to-200gib
+            if ! /system/bin/resize2fs "$root"; then
+                publish error-resize2fs
+                continue
+            fi
+            publish checking-expanded-ext4
+            /system/bin/e2fsck -f -y "$root"
+            check_result=$?
+            if [ "$check_result" -gt 1 ]; then
+                publish error-expanded-e2fsck-$check_result
                 continue
             fi
             filesystem_type=$(/system/bin/blkid -s TYPE -o value "$root" 2>/dev/null || true)

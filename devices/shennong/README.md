@@ -100,6 +100,19 @@ devices/shennong/tools/verify-private-inputs.sh \
    filesystem in a temporary sparse file, runs `e2fsck`, converts it with
    `img2simg`, and emits a portable SHA256 file. It never connects to a phone.
 
+   For the guarded recovery installer, build the 8 GiB staging image instead:
+
+   ```bash
+   sudo devices/shennong/tools/build-linux-root-staging-image.sh \
+     images/kali-linux-rolling-shennong-minimal-arm64-rootfs.tar.zst \
+     devices/shennong/out/linux_root-kali-staging.simg
+   ```
+
+   The maintenance recovery verifies the 200 GiB target, writes this smaller
+   filesystem, checks it, expands ext4 to fill `linux_root`, then checks it
+   again. This avoids forcing firmware to zero-fill the entire 200 GiB during
+   initial deployment.
+
 3. Build a slot-B `init_boot` image from verified private inputs:
 
    ```bash

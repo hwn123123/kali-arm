@@ -20,6 +20,7 @@
 #define CHUNK_DONT_CARE 0xcac3U
 #define CHUNK_CRC32 0xcac4U
 #define EXPECTED_TARGET_BYTES UINT64_C(214748364800)
+#define EXPECTED_IMAGE_BYTES UINT64_C(8589934592)
 
 struct __attribute__((packed)) sparse_header {
     uint32_t magic;
@@ -157,9 +158,10 @@ int main(int argc, char **argv) {
         die("unsupported sparse header");
     }
     uint64_t image_size = (uint64_t)header.blk_sz * header.total_blks;
-    if (image_size != target_size || header.blk_sz == 0 ||
+    if (image_size != EXPECTED_IMAGE_BYTES || image_size > target_size ||
+        header.blk_sz == 0 ||
         header.blk_sz % sizeof(uint32_t) != 0) {
-        die("sparse geometry does not match the 200 GiB target");
+        die("sparse image must be the guarded 8 GiB deployment image");
     }
     discard_exact(input, header.file_hdr_sz - sizeof(header));
 

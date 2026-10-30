@@ -155,6 +155,7 @@ rm "$work_dir/check/recovery.img"
     echo adb=shell-with-whitelisted-root-maintenance-broker
     echo linux_root=/dev/block/by-name/linux_root
     echo linux_root_flash=guarded-sparse-fifo
+    echo deployment_image_bytes=8589934592
     echo linux_root_bytes=214748364800
     echo recovery_control=/tmp/shennong-maintenance
 } >"$output_dir/MANIFEST.txt"
