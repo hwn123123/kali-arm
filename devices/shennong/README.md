@@ -111,7 +111,26 @@ devices/shennong/tools/verify-private-inputs.sh \
 
    Set `MAGISKBOOT=/path/to/magiskboot` when it is not in `PATH`.
 
-4. The recovery-side guard can inspect the dedicated partition without
+4. With the phone already in bootloader fastboot mode, use the guarded host
+   installer. The last argument must be a vbmeta image whose AVB flags disable
+   both verification and verity:
+
+   ```bash
+   devices/shennong/tools/flash-kali-b.sh \
+     ERASE-LINUX-ROOT \
+     /path/to/verified/OS3.0.308.0-A \
+     devices/shennong/out/linux_root-kali.simg \
+     devices/shennong/out/init_boot_b-kali.img \
+     /path/to/disabled-vbmeta_b.img
+   ```
+
+   The installer validates the `shennong` product, unlocked bootloader, exact
+   partition sizes, stock input hashes, 200 GiB sparse geometry and AVB flags.
+   It writes only `linux_root`, `boot_b`, `vendor_boot_b`, `dtbo_b`,
+   `init_boot_b` and `vbmeta_b`, then selects B without rebooting. It contains
+   no slot-A, recovery, `userdata`, `super` or wipe operation.
+
+5. The recovery-side guard can inspect the dedicated partition without
    modifying it:
 
    ```sh
