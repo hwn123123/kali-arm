@@ -33,7 +33,7 @@ The current test phone has this verified layout:
 | End sector | `128626681` |
 | Size | `52428800` sectors / exactly 200 GiB |
 | Filesystem | intentionally unformatted until installation |
-| Recovery | custom slot-B multiboot recovery v1.6 |
+| Recovery | custom slot-B multiboot recovery v1.8 |
 
 Never hard-code `sda34` in an installer. Resolve the partition by GPT name
 `linux_root` and validate the disk GUID, partition GUID, sector range and exact
@@ -76,6 +76,32 @@ devices/shennong/tools/verify-private-inputs.sh \
 ```
 
 ## Build stages
+
+The v1.8 recovery keeps the tested graphical multiboot selector on slot B.
+Volume keys only move the highlight; no action is dispatched until the power
+key confirms it.  The power bridge deliberately ignores every selector log
+line beginning with `selected` and accepts only the four confirmation-path
+messages.  This fixes the v1.6 bug where merely highlighting a reboot item
+could execute it.
+
+Build it from the pinned PixelOS recovery, the pinned selector compatibility
+image and the recovery assets with:
+
+```bash
+devices/shennong/tools/build-multiboot-recovery.sh \
+  /path/to/current-a-recovery.img \
+  /path/to/xm14pro-nwrt-recovery.img \
+  /path/to/recovery-assets \
+  devices/shennong/out/recovery-v1.8 \
+  /path/to/magiskboot-arm64 \
+  /path/to/mkbootimg.py \
+  /path/to/avbtool.py \
+  devices/shennong/recovery/patch-multiboot-recovery.py
+```
+
+The selector input is accepted only at SHA-256
+`944cd9b5f64a9c9d4c0f92bec8d355eafe4d67dd72c54f69759ce8414d845460`.
+The image is intended for `recovery_b` only; `recovery_a` remains untouched.
 
 1. Build the Kali rootfs archive:
 
