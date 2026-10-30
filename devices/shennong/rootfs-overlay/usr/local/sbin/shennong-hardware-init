@@ -4,6 +4,8 @@ set -eu
 
 firmware_paths=/vendor/firmware_mnt/image,/vendor/firmware_mnt/image/kiwi,/vendor/modem_firmware/image
 
+exec >>/var/log/shennong-hardware.log 2>&1
+
 log() {
     printf 'shennong-hardware: %s\n' "$*"
 }

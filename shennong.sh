@@ -10,7 +10,7 @@ hw_model=${hw_model:-"shennong"}
 architecture=${architecture:-"arm64"}
 desktop=${desktop:-"xfce"}
 hostname=${hostname:-"kali-shennong"}
-extra_custom_pkgs="busybox-static file kmod usbutils libdrm2 ${extra_custom_pkgs:-}"
+extra_custom_pkgs="busybox-static dnsmasq-base file kmod usbutils libdrm2 ${extra_custom_pkgs:-}"
 
 source ./common.d/base_image.sh
 
@@ -25,7 +25,10 @@ chown 0:0 "${work_dir}"
 # onto security-sensitive rootfs directories such as /etc and /usr.
 cp -a --no-preserve=ownership devices/shennong/rootfs-overlay/. "${work_dir}/"
 chmod 0755 "${work_dir}/usr/local/sbin/shennong-hardware-init"
+chmod 0755 "${work_dir}/usr/local/sbin/shennong-usb-network"
 chmod 0644 "${work_dir}/etc/systemd/system/shennong-hardware.service"
+chmod 0644 "${work_dir}/etc/systemd/system/shennong-usb-network.service"
+chmod 0644 "${work_dir}/etc/systemd/journald.conf.d/shennong-persistent.conf"
 
 for root_owned_path in "${work_dir}" "${work_dir}/etc" "${work_dir}/usr" "${work_dir}/var"; do
     chown 0:0 "$root_owned_path"
@@ -43,6 +46,7 @@ systemctl disable rpi-resizerootfs.service || true
 systemctl enable NetworkManager.service
 systemctl enable ssh.service
 systemctl enable shennong-hardware.service
+systemctl enable shennong-usb-network.service
 
 if ! id kali >/dev/null 2>&1; then
     useradd --create-home --shell /bin/bash --groups sudo kali
@@ -50,6 +54,7 @@ fi
 passwd --lock kali
 install -d -m700 -o kali -g kali /home/kali/.ssh
 install -d -m755 /opt/shennong-vendor
+install -d -m2755 -o root -g systemd-journal /var/log/journal
 
 cat >/etc/sudoers.d/90-shennong-lab <<'SUDOERS'
 kali ALL=(ALL:ALL) NOPASSWD: ALL
@@ -142,7 +147,10 @@ validate_metadata "${work_dir}/usr" "0:0 755"
 validate_metadata "${work_dir}/var" "0:0 755"
 validate_metadata "${work_dir}/etc/fstab" "0:0 644"
 validate_metadata "${work_dir}/etc/systemd/system/shennong-hardware.service" "0:0 644"
+validate_metadata "${work_dir}/etc/systemd/system/shennong-usb-network.service" "0:0 644"
+validate_metadata "${work_dir}/etc/systemd/journald.conf.d/shennong-persistent.conf" "0:0 644"
 validate_metadata "${work_dir}/usr/local/sbin/shennong-hardware-init" "0:0 755"
+validate_metadata "${work_dir}/usr/local/sbin/shennong-usb-network" "0:0 755"
 if [ -n "${SHENNONG_AUTHORIZED_KEY_FILE:-}" ]; then
     validate_metadata "${work_dir}/home/kali/.ssh/authorized_keys" \
         "${kali_uid}:${kali_gid} 600"

@@ -13,6 +13,9 @@ FIRMWARE_PATHS=/vendor/firmware_mnt/image,/vendor/firmware_mnt/image/kiwi,/vendo
 
 log() {
     message="shennong-init: $*"
+    if [ -d /run ]; then
+        "$BB" echo "$message" >>/run/shennong-initramfs.log 2>/dev/null || true
+    fi
     "$BB" echo "$message" >/dev/kmsg 2>/dev/null || true
     if [ -w /dev/pmsg0 ]; then
         "$BB" echo "$message" >/dev/pmsg0 2>/dev/null || true
@@ -117,6 +120,13 @@ fi
 log "mounting Kali root from $linux_root"
 mount -t ext4 -o rw,noatime "$linux_root" "$ROOT_MOUNT" || \
     emergency_shell "failed to mount linux_root as ext4"
+
+mkdir -p "$ROOT_MOUNT/var/log"
+if [ -r /run/shennong-initramfs.log ]; then
+    cp /run/shennong-initramfs.log \
+        "$ROOT_MOUNT/var/log/shennong-initramfs.log" || true
+fi
+dmesg >"$ROOT_MOUNT/var/log/shennong-initramfs-dmesg.log" 2>&1 || true
 
 [ -x "$ROOT_MOUNT/sbin/init" ] || \
     emergency_shell "Kali /sbin/init is missing"

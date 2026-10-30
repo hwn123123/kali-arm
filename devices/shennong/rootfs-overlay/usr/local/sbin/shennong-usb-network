@@ -1,0 +1,86 @@
+#!/bin/sh
+
+set -eu
+
+gadget=/sys/kernel/config/usb_gadget/shennong-kali
+function_name=ncm.usb0
+address=172.31.14.1/24
+
+exec >>/var/log/shennong-usb-network.log 2>&1
+
+log() {
+    printf 'shennong-usb-network: %s\n' "$*"
+}
+
+mountpoint -q /sys/kernel/config || \
+    mount -t configfs configfs /sys/kernel/config
+
+if [ -d "$gadget" ] && [ -e "$gadget/UDC" ]; then
+    printf '' >"$gadget/UDC" || true
+fi
+
+mkdir -p \
+    "$gadget/strings/0x409" \
+    "$gadget/configs/c.1/strings/0x409"
+
+printf '0x2717' >"$gadget/idVendor"
+printf '0xff88' >"$gadget/idProduct"
+printf '0x0200' >"$gadget/bcdUSB"
+printf '0x0100' >"$gadget/bcdDevice"
+printf 'shennong-kali' >"$gadget/strings/0x409/serialnumber"
+printf 'Xiaomi 14 Pro' >"$gadget/strings/0x409/manufacturer"
+printf 'Kali USB Network' >"$gadget/strings/0x409/product"
+printf 'NCM network and SSH' >"$gadget/configs/c.1/strings/0x409/configuration"
+printf '250' >"$gadget/configs/c.1/MaxPower"
+
+if [ ! -d "$gadget/functions/$function_name" ]; then
+    mkdir -p "$gadget/functions/$function_name"
+fi
+printf '02:00:00:00:14:01' >"$gadget/functions/$function_name/dev_addr"
+printf '02:00:00:00:14:02' >"$gadget/functions/$function_name/host_addr"
+ln -sfn "../../functions/$function_name" \
+    "$gadget/configs/c.1/$function_name"
+
+udc=
+for candidate in /sys/class/udc/*; do
+    [ -e "$candidate" ] || continue
+    udc=${candidate##*/}
+    break
+done
+[ -n "$udc" ] || {
+    log 'no USB device controller is available'
+    exit 1
+}
+printf '%s' "$udc" >"$gadget/UDC"
+
+attempt=0
+while [ "$attempt" -lt 50 ] && [ ! -e /sys/class/net/usb0 ]; do
+    attempt=$((attempt + 1))
+    sleep 0.1
+done
+[ -e /sys/class/net/usb0 ] || {
+    log 'usb0 did not appear after binding the gadget'
+    exit 1
+}
+
+ip link set usb0 up
+ip address flush dev usb0
+ip address add "$address" dev usb0
+
+if [ -f /run/shennong-usb-dnsmasq.pid ]; then
+    old_pid=$(cat /run/shennong-usb-dnsmasq.pid 2>/dev/null || true)
+    [ -n "$old_pid" ] && kill "$old_pid" 2>/dev/null || true
+    rm -f /run/shennong-usb-dnsmasq.pid
+fi
+
+dnsmasq \
+    --conf-file=/dev/null \
+    --interface=usb0 \
+    --bind-interfaces \
+    --except-interface=lo \
+    --dhcp-range=172.31.14.2,172.31.14.20,255.255.255.0,12h \
+    --dhcp-option=3 \
+    --dhcp-option=6,172.31.14.1 \
+    --pid-file=/run/shennong-usb-dnsmasq.pid
+
+log "USB NCM ready on $address using UDC $udc"

@@ -141,7 +141,9 @@ The port is intentionally staged so failures remain diagnosable:
    loads ordered Xiaomi/Qualcomm modules, then mounts `linux_root`;
 3. the firmware mounts move into Kali at the paths expected by the stock
    kernel, and the initramfs starts Kali's systemd;
-4. USB/serial or SSH access and persistent logs;
+4. the built-in CDC-NCM gadget exposes `172.31.14.1/24`, provides DHCP to the
+   USB host and starts key-only SSH for the `kali` user; initramfs, hardware,
+   USB-network and systemd-journal logs persist on `linux_root`;
 5. display and touch;
 6. Wi-Fi/Bluetooth and audio;
 7. modem/telephony compatibility bridge;
