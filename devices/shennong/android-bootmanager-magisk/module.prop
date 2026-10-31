@@ -1,0 +1,6 @@
+id=shennong_bootmanager
+name=Xiaomi 14 Pro MultiBoot Return Service
+version=1.0
+versionCode=1
+author=hwn123123
+description=After Android A boots successfully, make recovery B the verified next boot target.

@@ -114,6 +114,18 @@ The selector input is accepted only at SHA-256
 The same verified image is intended for both `recovery_a` and `recovery_b`.
 Keep the original recovery-A image as a host-side rollback artifact.
 
+After Kali has written its guarded readiness token, Android A uses the Magisk
+module under `android-bootmanager-magisk/` to select slot B and write a verified
+`boot-recovery` BCB for the following boot.  The module refuses to change boot
+state until Android reports a completed boot and the exact Kali readiness token
+exists.  Build it with the private, hash-pinned Android 17 `bootctl` binary:
+
+```bash
+devices/shennong/tools/build-android-bootmanager-module.sh \
+  /path/to/bootctl-pixelos17 \
+  devices/shennong/out/shennong-bootmanager-magisk-v1.zip
+```
+
 1. Build the Kali rootfs archive:
 
    ```bash
