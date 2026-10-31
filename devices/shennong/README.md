@@ -148,7 +148,9 @@ Keep the original recovery-A image as a host-side rollback artifact.
    The maintenance recovery verifies the 200 GiB target, writes this smaller
    filesystem, checks it, expands ext4 to fill `linux_root`, then checks it
    again. This avoids forcing firmware to zero-fill the entire 200 GiB during
-   initial deployment.
+   initial deployment. If the staging image is written directly by fastboot,
+   `shennong-expand-rootfs.service` performs the same ext4 growth online during
+   the first successful Kali boot after validating the exact 200 GiB device.
 
 3. Build a slot-B `init_boot` image from verified private inputs:
 
@@ -213,11 +215,14 @@ The port is intentionally staged so failures remain diagnosable:
 4. the built-in CDC-NCM gadget exposes `172.31.14.1/24`, provides DHCP to the
    USB host and starts key-only SSH for the `kali` user; initramfs, hardware,
    USB-network and systemd-journal logs persist on `linux_root`;
-5. display and touch;
-6. Wi-Fi/Bluetooth and audio;
-7. modem/telephony compatibility bridge;
-8. camera compatibility bridge;
-9. optional rebuilt kernel features such as namespaces needed by Docker.
+5. after USB and SSH are healthy, Kali writes the guarded slot-B readiness
+   token and arms the next boot for the shared multiboot recovery; the menu
+   clears that one-shot recovery request only when launching a selected system;
+6. display and touch;
+7. Wi-Fi/Bluetooth and audio;
+8. modem/telephony compatibility bridge;
+9. camera compatibility bridge;
+10. optional rebuilt kernel features such as namespaces needed by Docker.
 
 Telephony and camera need proprietary Android userspace services in addition
 to kernel drivers. They will be isolated under `/opt/shennong-vendor` or in a

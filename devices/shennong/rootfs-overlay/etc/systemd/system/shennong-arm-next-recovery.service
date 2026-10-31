@@ -1,0 +1,12 @@
+[Unit]
+Description=Return the next Xiaomi 14 Pro boot to multiboot recovery
+After=shennong-expand-rootfs.service shennong-usb-network.service ssh.service
+Wants=shennong-usb-network.service ssh.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/shennong-arm-next-recovery
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

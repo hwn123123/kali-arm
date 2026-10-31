@@ -1,0 +1,82 @@
+#!/bin/sh
+
+set -eu
+
+expected_misc_size=4194304
+ready_token=shennong-linux-b-ready-v1
+state_dir=/var/lib/shennong
+
+log() {
+    printf 'shennong-arm-next-recovery: %s\n' "$*"
+}
+
+slot_b=no
+for boot_args in /proc/cmdline /proc/bootconfig; do
+    if [ -r "$boot_args" ] && \
+       grep -Eqs 'androidboot\.slot_suffix=(_b|b)( |$)' "$boot_args"; then
+        slot_b=yes
+    fi
+done
+if [ "$slot_b" != yes ]; then
+    log 'refusing to arm recovery outside slot B'
+    exit 100
+fi
+
+find_partition() {
+    name=$1
+    for candidate in \
+        "/dev/disk/by-partlabel/$name" \
+        "/dev/block/by-name/$name" \
+        "/dev/block/bootdevice/by-name/$name"; do
+        if [ -b "$candidate" ]; then
+            readlink -f "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
+metadata_device=$(find_partition metadata) || {
+    log 'metadata partition is missing'
+    exit 101
+}
+misc_device=$(find_partition misc) || {
+    log 'misc partition is missing'
+    exit 102
+}
+
+misc_size=$(/usr/sbin/blockdev --getsize64 "$misc_device")
+[ "$misc_size" = "$expected_misc_size" ] || {
+    log "refusing unexpected misc size: $misc_size"
+    exit 103
+}
+
+metadata_mount=/run/shennong-metadata
+install -d -m0700 "$metadata_mount"
+mount -o rw,nosuid,nodev "$metadata_device" "$metadata_mount"
+install -d -m0700 "$metadata_mount/linux-multiboot"
+token_tmp="$metadata_mount/linux-multiboot/.b-slot-ready.new"
+printf '%s\n' "$ready_token" >"$token_tmp"
+chmod 0600 "$token_tmp"
+mv -f "$token_tmp" "$metadata_mount/linux-multiboot/b-slot-ready"
+sync -f "$metadata_mount/linux-multiboot/b-slot-ready" 2>/dev/null || sync
+umount "$metadata_mount"
+
+bcb_tmp=$(mktemp /run/shennong-bcb.XXXXXX)
+trap 'rm -f -- "$bcb_tmp"' EXIT
+dd if=/dev/zero of="$bcb_tmp" bs=2048 count=1 2>/dev/null
+printf 'boot-recovery' | dd of="$bcb_tmp" bs=1 seek=0 conv=notrunc 2>/dev/null
+printf 'recovery\n' | dd of="$bcb_tmp" bs=1 seek=64 conv=notrunc 2>/dev/null
+expected_bcb_sha256=$(sha256sum "$bcb_tmp" | cut -d ' ' -f 1)
+dd if="$bcb_tmp" of="$misc_device" bs=2048 count=1 2>/dev/null
+sync
+actual_bcb_sha256=$(dd if="$misc_device" bs=2048 count=1 2>/dev/null | sha256sum | cut -d ' ' -f 1)
+[ "$actual_bcb_sha256" = "$expected_bcb_sha256" ] || {
+    log 'BCB read-back verification failed'
+    exit 104
+}
+
+install -d -m0755 "$state_dir"
+printf 'slot=b\nbcb_sha256=%s\n' "$actual_bcb_sha256" >"$state_dir/next-recovery-armed"
+sync
+log 'slot B is ready and the next boot is armed for multiboot recovery'

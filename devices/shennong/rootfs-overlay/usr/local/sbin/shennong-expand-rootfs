@@ -1,0 +1,65 @@
+#!/bin/sh
+
+set -eu
+
+expected_size=214748364800
+minimum_filesystem_size=204010946560
+marker=/var/lib/shennong/rootfs-expanded-v1
+
+log() {
+    printf 'shennong-expand-rootfs: %s\n' "$*"
+}
+
+[ ! -e "$marker" ] || {
+    log 'already expanded'
+    exit 0
+}
+
+root_device=
+for candidate in \
+    /dev/disk/by-partlabel/linux_root \
+    /dev/block/by-name/linux_root \
+    /dev/block/bootdevice/by-name/linux_root; do
+    if [ -b "$candidate" ]; then
+        root_device=$candidate
+        break
+    fi
+done
+[ -n "$root_device" ] || {
+    log 'linux_root block device is missing'
+    exit 90
+}
+
+actual_size=$(/usr/sbin/blockdev --getsize64 "$root_device")
+[ "$actual_size" = "$expected_size" ] || {
+    log "refusing unexpected linux_root size: $actual_size"
+    exit 91
+}
+
+root_source=$(/usr/bin/findmnt -n -o SOURCE /)
+root_fstype=$(/usr/bin/findmnt -n -o FSTYPE /)
+[ "$root_fstype" = ext4 ] || {
+    log "refusing non-ext4 root filesystem: $root_fstype"
+    exit 92
+}
+
+root_device_real=$(readlink -f "$root_device")
+root_source_real=$(readlink -f "$root_source")
+[ -b "$root_source_real" ] && [ "$root_source_real" = "$root_device_real" ] || {
+    log "refusing source mismatch: root=$root_source_real linux_root=$root_device_real"
+    exit 93
+}
+
+log "growing $root_device_real online to $expected_size bytes"
+/usr/sbin/resize2fs "$root_device_real"
+
+filesystem_size=$(df -B1 --output=size / | tail -n 1 | tr -d ' ')
+[ "$filesystem_size" -ge "$minimum_filesystem_size" ] || {
+    log "expanded filesystem is unexpectedly small: $filesystem_size"
+    exit 94
+}
+
+install -d -m0755 "$(dirname "$marker")"
+printf 'device=%s\nbytes=%s\n' "$root_device_real" "$filesystem_size" >"$marker"
+sync
+log "expansion complete: $filesystem_size bytes"

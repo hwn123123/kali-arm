@@ -1,0 +1,13 @@
+[Unit]
+Description=Expand Xiaomi 14 Pro Kali root filesystem to linux_root
+After=local-fs.target
+Before=shennong-hardware.service shennong-usb-network.service
+ConditionPathExists=!/var/lib/shennong/rootfs-expanded-v1
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/shennong-expand-rootfs
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
