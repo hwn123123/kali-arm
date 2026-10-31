@@ -30,7 +30,11 @@ fi
 
 sync
 echo "slot-a: selected"
+if ! /nwrt/bin/xm14-clear-recovery-request; then
+    echo "slot-a: failed to clear recovery request"
+    exit 73
+fi
 setprop sys.powerctl reboot
 echo "slot-a: reboot request returned unexpectedly"
 sleep 5
-exit 73
+exit 74

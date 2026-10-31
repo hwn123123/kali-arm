@@ -33,7 +33,7 @@ The current test phone has this verified layout:
 | End sector | `128626681` |
 | Size | `52428800` sectors / exactly 200 GiB |
 | Filesystem | intentionally unformatted until installation |
-| Recovery | custom slot-B multiboot recovery v1.8 |
+| Recovery | identical custom multiboot recovery v1.9 on recovery A and B |
 
 Never hard-code `sda34` in an installer. Resolve the partition by GPT name
 `linux_root` and validate the disk GUID, partition GUID, sector range and exact
@@ -77,12 +77,22 @@ devices/shennong/tools/verify-private-inputs.sh \
 
 ## Build stages
 
-The v1.8 recovery keeps the tested graphical multiboot selector on slot B.
+The v1.9 recovery keeps the tested graphical multiboot selector and is written
+identically to both recovery slots, so the stock slot-A recovery is no longer
+exposed as a second management environment.
 Volume keys only move the highlight; no action is dispatched until the power
 key confirms it.  The power bridge deliberately ignores every selector log
 line beginning with `selected` and accepts only the four confirmation-path
 messages.  This fixes the v1.6 bug where merely highlighting a reboot item
 could execute it.
+
+Before either system is launched, the selector clears only the first 2048-byte
+`bootloader_message` structure in `misc`, verifies the cleared bytes, then
+switches the slot and reboots.  It never clears the A/B metadata that follows
+that structure.  This prevents a stale `boot-recovery` request from sending an
+Android-A selection back into recovery A.  Android and Kali each install a
+separate next-boot service later in the deployment so successful systems return
+to this manager on their following boot.
 
 Build it from the pinned PixelOS recovery, the pinned selector compatibility
 image and the recovery assets with:
@@ -92,7 +102,7 @@ devices/shennong/tools/build-multiboot-recovery.sh \
   /path/to/current-a-recovery.img \
   /path/to/xm14pro-nwrt-recovery.img \
   /path/to/recovery-assets \
-  devices/shennong/out/recovery-v1.8 \
+  devices/shennong/out/recovery-v1.9 \
   /path/to/magiskboot-arm64 \
   /path/to/mkbootimg.py \
   /path/to/avbtool.py \
@@ -101,7 +111,8 @@ devices/shennong/tools/build-multiboot-recovery.sh \
 
 The selector input is accepted only at SHA-256
 `944cd9b5f64a9c9d4c0f92bec8d355eafe4d67dd72c54f69759ce8414d845460`.
-The image is intended for `recovery_b` only; `recovery_a` remains untouched.
+The same verified image is intended for both `recovery_a` and `recovery_b`.
+Keep the original recovery-A image as a host-side rollback artifact.
 
 1. Build the Kali rootfs archive:
 

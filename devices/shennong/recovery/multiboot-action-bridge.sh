@@ -18,14 +18,29 @@ request_power_action() {
     fi
 }
 
+request_system_reboot() {
+    marker=reboot-system
+    [ ! -e "$state_dir/$marker" ] || return 0
+    touch "$state_dir/$marker"
+    echo "$(date): clear BCB and request reboot from confirmed system action" >>"$bridge_log"
+    if ! /nwrt/bin/xm14-clear-recovery-request >>"$bridge_log" 2>&1; then
+        echo "$(date): refusing system reboot because BCB clear failed" >>"$bridge_log"
+        return 1
+    fi
+    sync
+    if ! setprop sys.powerctl reboot; then
+        echo "$(date): setprop failed for reboot" >>"$bridge_log"
+    fi
+}
+
 while true; do
     if [ -r "$ui_log" ]; then
         # The selector logs "selected ..." whenever the highlight moves.  Those
         # lines are navigation state, not confirmation, and must never trigger
         # an action.  The four messages below are emitted only from the power
         # key confirmation path immediately before the selector's reboot call.
-        grep -Fq "power off device" "$ui_log" && request_power_action shutdown poweroff
-        grep -Fq "reboot to current default system" "$ui_log" && request_power_action reboot reboot-system
+        grep -Fq "power off device" "$ui_log" && request_power_action shutdown,userrequested poweroff
+        grep -Fq "reboot to current default system" "$ui_log" && request_system_reboot
         grep -Fq "reboot to recovery" "$ui_log" && request_power_action reboot,recovery reboot-recovery
         grep -Fq "reboot to bootloader" "$ui_log" && request_power_action reboot,bootloader reboot-bootloader
     fi

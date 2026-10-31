@@ -41,7 +41,7 @@ def patch_props(path: Path) -> None:
 def patch_branding(path: Path) -> None:
     data = path.read_bytes()
     replacements = (
-        (b"NWRT Recovery / v0.9", b"Linux MultiBoot v1.8"),
+        (b"NWRT Recovery / v0.9", b"Linux MultiBoot v1.9"),
         (b"/tmp/xm14-rec.log", b"/multiboot-ui.log"),
         (b"NWRT Recovery", b"Linux REC v1 "),
         (b"NWRT / OpenWrt", b"Linux / Kali  "),
