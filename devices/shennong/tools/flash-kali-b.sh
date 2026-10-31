@@ -8,6 +8,10 @@ Usage:
   flash-kali-b.sh ERASE-LINUX-ROOT STOCK_A_DIR LINUX_ROOT_SPARSE \
     INIT_BOOT_B_KALI DISABLED_VBMETA_B
 
+LINUX_ROOT_SPARSE may be the guarded 8 GiB staging filesystem (preferred) or
+the full 200 GiB sparse filesystem. The staging filesystem grows online after
+the first successful Kali boot.
+
 This writes only linux_root and slot-B boot-chain partitions. It does not
 write slot A, recovery, Android userdata or logical Android system partitions.
 The phone must already be in bootloader fastboot mode.
@@ -74,6 +78,15 @@ check_hash "$stock_dir/vendor_boot_a.img" \
     07ec90a770c41ea5a0a7a03698c26773a15426dcf87fd4b2c4eac350f1ec7acc
 check_hash "$stock_dir/dtbo_a.img" \
     2300821865c3dff04c2e25f0ec0cd6bc460c03e1176202ad2b87623a92c6eaf1
+check_hash "$init_boot_image" \
+    d74d39e13d46f4f0420edd8658d1a7a54008fb3b02f1a24ace2710980797c448
+
+[ -f "$linux_root_image.sha256sum" ] || {
+    echo "Missing generated checksum: $linux_root_image.sha256sum" >&2
+    exit 1
+}
+expected_sparse_sha256="$(awk 'NF {print $1; exit}' "$linux_root_image.sha256sum")"
+check_hash "$linux_root_image" "$expected_sparse_sha256"
 
 python3 - "$linux_root_image" "$init_boot_image" "$vbmeta_image" <<'PY'
 import os
@@ -91,8 +104,9 @@ magic, major, minor, file_header, chunk_header, block_size, blocks, chunks, chec
 )
 if magic != 0xED26FF3A or major != 1 or file_header != 28 or chunk_header != 12:
     raise SystemExit("linux_root image is not a supported Android sparse image")
-if block_size * blocks != 214_748_364_800:
-    raise SystemExit("linux_root sparse image is not exactly 200 GiB logically")
+logical_size = block_size * blocks
+if logical_size not in (8_589_934_592, 214_748_364_800):
+    raise SystemExit("linux_root sparse image is neither 8 GiB staging nor 200 GiB full")
 
 if os.path.getsize(init_boot_path) != 8_388_608:
     raise SystemExit("init_boot image is not exactly 8 MiB")
@@ -105,7 +119,8 @@ flags = struct.unpack_from(">I", vbmeta, 120)[0]
 if flags & 0x3 != 0x3:
     raise SystemExit("vbmeta does not disable both verification and verity")
 
-print(f"Sparse geometry: {block_size} x {blocks} = 200 GiB, {chunks} chunks")
+kind = "staging" if logical_size == 8_589_934_592 else "full"
+print(f"Sparse geometry: {block_size} x {blocks} = {logical_size} bytes ({kind}), {chunks} chunks")
 print(f"vbmeta flags: {flags}")
 PY
 
@@ -170,4 +185,6 @@ fastboot flash vbmeta_b "$vbmeta_image"
 fastboot set_active b
 
 echo "Kali slot B is installed and selected. The phone remains in fastboot."
-echo "Run 'fastboot reboot' when ready to begin the first boot."
+echo "Reboot to the shared recovery, then choose 'reboot system' to clear the"
+echo "recovery BCB and begin the first Kali boot. The staging rootfs will grow"
+echo "online to the verified 200 GiB linux_root partition."

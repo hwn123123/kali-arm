@@ -183,13 +183,14 @@ devices/shennong/tools/build-android-bootmanager-module.sh \
    devices/shennong/tools/flash-kali-b.sh \
      ERASE-LINUX-ROOT \
      /path/to/verified/OS3.0.308.0-A \
-     devices/shennong/out/linux_root-kali.simg \
+     devices/shennong/out/linux_root-kali-staging.simg \
      devices/shennong/out/init_boot_b-kali.img \
      /path/to/disabled-vbmeta_b.img
    ```
 
    The installer validates the `shennong` product, unlocked bootloader, exact
-   partition sizes, stock input hashes, 200 GiB sparse geometry and AVB flags.
+   partition sizes, stock input hashes, generated sparse checksum, either the
+   guarded 8 GiB staging geometry or full 200 GiB geometry, and AVB flags.
    It writes only `linux_root`, `boot_b`, `vendor_boot_b`, `dtbo_b`,
    `init_boot_b` and `vbmeta_b`, then selects B without rebooting. It contains
    no slot-A, recovery, `userdata`, `super` or wipe operation.
