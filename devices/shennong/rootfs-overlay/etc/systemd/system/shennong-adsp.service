@@ -1,0 +1,13 @@
+[Unit]
+Description=Stock Qualcomm ADSP and battery/Type-C channel
+After=shennong-hardware.service
+Before=shennong-usb-network.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/shennong-adsp
+RemainAfterExit=yes
+TimeoutStartSec=60
+
+[Install]
+WantedBy=multi-user.target

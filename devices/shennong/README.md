@@ -51,8 +51,12 @@ for history and are not the current installation path.
 
 Current deployment status: the fresh Kali/XFCE root and B boot chain were
 written from REC and read-back checked on 2026-11-09. All preserved A-slot and
-REC hashes matched. The first boot did not expose USB management; native boot
-is not yet validated. The next step is to read persistent logs from REC.
+REC hashes matched. Persistent logs from REC confirm native Kali systemd, udev and OpenSSH
+started. USB management is not yet usable, and Xorg crashes during modesetting
+initialization. Current corrections cover device-role selection, ConfigFS
+function links, standard /dev permissions, existing firmware bind mounts,
+block-device alias checks, virtual display exclusion, and stock ADSP startup
+for the battery/Type-C channel. ADSP integration still needs hardware validation.
 Display, touch, USB, Wi-Fi, modem and other hardware are not yet claimed to
 work in Kali.
 

@@ -45,7 +45,11 @@ mount_read_only persist /opt/shennong-vendor/persist ext4
 mkdir -p /opt/shennong-vendor /vendor
 ln -sfn /vendor/firmware_mnt /opt/shennong-vendor/firmware_mnt
 ln -sfn /vendor/modem_firmware /opt/shennong-vendor/modem_firmware
-ln -sfn firmware_mnt/image /vendor/firmware
+# The native init may already bind the stock image directory here. Do not
+# attempt to create a symlink inside that read-only firmware filesystem.
+if ! mountpoint -q /vendor/firmware && [ ! -d /vendor/firmware ]; then
+    ln -sfn firmware_mnt/image /vendor/firmware
+fi
 
 if [ -w /sys/module/firmware_class/parameters/path ] && \
    [ -d /vendor/firmware_mnt/image ]; then

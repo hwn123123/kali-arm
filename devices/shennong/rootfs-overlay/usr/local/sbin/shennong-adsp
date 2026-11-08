@@ -1,0 +1,35 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# Use the same stock loader entry point as Xiaomi recovery and NWRT.
+set -eu
+exec >>/var/log/shennong-adsp.log 2>&1
+for module in q6_pdr_dlkm q6_notifier_dlkm snd_event_dlkm gpr_dlkm \
+    spf_core_dlkm adsp_loader_dlkm frpc_adsprpc; do
+    modprobe "$module"
+done
+adsp=
+for candidate in /sys/class/remoteproc/remoteproc*; do
+    [ -r "$candidate/name" ] || continue
+    case "$(cat "$candidate/name")" in
+        *remoteproc-adsp) adsp=$candidate; break ;;
+    esac
+done
+[ -n "$adsp" ] || { echo 'ADSP remote processor is missing'; exit 1; }
+if [ "$(cat "$adsp/state")" != running ]; then
+    [ -r /vendor/firmware_mnt/image/adsp.mdt ]
+    [ -w /sys/kernel/boot_adsp/boot ]
+    printf '1\n' > /sys/kernel/boot_adsp/boot
+fi
+count=0
+while [ "$(cat "$adsp/state")" != running ]; do
+    count=$((count + 1))
+    [ "$count" -lt 30 ] || { echo 'Stock ADSP boot timed out'; exit 1; }
+    sleep 1
+done
+count=0
+while [ ! -d /sys/class/power_supply/battery ]; do
+    count=$((count + 1))
+    [ "$count" -lt 20 ] || { echo 'ADSP is running; battery channel is missing'; exit 1; }
+    sleep 1
+done
+echo 'Stock ADSP and battery/Type-C power channel are ready'

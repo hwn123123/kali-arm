@@ -12,6 +12,15 @@ log() {
     printf 'shennong-usb-network: %s\n' "$*"
 }
 
+# HyperOS/NWRT explicitly requests the controller's device role. Binding a
+# ConfigFS gadget alone does not change the stock dual-role controller state.
+role=/sys/class/usb_role/a600000.ssusb-role-switch/role
+if [ -w "$role" ]; then
+    current_role=$(cat "$role")
+    [ "$current_role" = device ] || printf 'device' > "$role"
+    log "USB role: $(cat "$role")"
+fi
+
 mountpoint -q /sys/kernel/config || \
     mount -t configfs configfs /sys/kernel/config
 
@@ -38,7 +47,7 @@ if [ ! -d "$gadget/functions/$function_name" ]; then
 fi
 printf '02:00:00:00:14:01' >"$gadget/functions/$function_name/dev_addr"
 printf '02:00:00:00:14:02' >"$gadget/functions/$function_name/host_addr"
-ln -sfn "../../functions/$function_name" \
+ln -sfn "$gadget/functions/$function_name" \
     "$gadget/configs/c.1/$function_name"
 
 udc=
