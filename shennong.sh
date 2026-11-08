@@ -10,7 +10,7 @@ hw_model=${hw_model:-"shennong"}
 architecture=${architecture:-"arm64"}
 desktop=${desktop:-"xfce"}
 hostname=${hostname:-"kali-shennong"}
-extra_custom_pkgs="busybox-static dnsmasq-base e2fsprogs file kmod usbutils libdrm2 util-linux ${extra_custom_pkgs:-}"
+extra_custom_pkgs="busybox-static dnsmasq-base e2fsprogs file kmod usbutils libdrm2 util-linux xserver-xorg-video-fbdev xserver-xorg-input-libinput ${extra_custom_pkgs:-}"
 
 source ./common.d/base_image.sh
 
@@ -52,7 +52,9 @@ systemctl enable ssh.service
 systemctl enable shennong-hardware.service
 systemctl enable shennong-usb-network.service
 systemctl enable shennong-expand-rootfs.service
-systemctl enable shennong-arm-next-recovery.service
+systemctl disable shennong-arm-next-recovery.service || true
+systemctl enable shennong-devices.service
+systemctl enable shennong-ssh-hostkeys.service
 
 if ! id kali >/dev/null 2>&1; then
     useradd --create-home --shell /bin/bash --groups sudo kali
@@ -81,6 +83,12 @@ if [ -n "${SHENNONG_AUTHORIZED_KEY_FILE:-}" ]; then
     kali_gid="$(awk -F: '$1 == "kali" { print $4 }' "${work_dir}/etc/passwd")"
     chown "${kali_uid}:${kali_gid}" \
         "${work_dir}/home/kali/.ssh/authorized_keys"
+fi
+
+printf 'device=shennong\n' > "${work_dir}/etc/shennong-build"
+if [ -n "${SHENNONG_AUTHORIZED_KEY_FILE:-}" ]; then
+    devices/shennong/tools/configure-native-rootfs.sh \
+        "${work_dir}" "${SHENNONG_AUTHORIZED_KEY_FILE}"
 fi
 
 kernel_release="6.1.138-android14-11-g0c3d559bcd85-ab14529422"

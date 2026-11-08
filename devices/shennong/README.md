@@ -4,6 +4,58 @@ This directory contains the out-of-tree Kali ARM port for the Xiaomi 14 Pro.
 Development happens only on the `shennong-6.1` branch of
 `hwn123123/kali-arm`. It is not an upstream Kali submission.
 
+## Current native Kali bring-up (2026-11-09)
+
+The maintained early entry point is now `initramfs/boot-shim.c`, derived from
+NWRT's proven static PID-1 module/device discovery and recovery dispatch. The
+legacy shell init below is a historical input and must not be deployed. The
+stock kernel has no `CONFIG_DEVTMPFS`, `CONFIG_FHANDLE` or `CONFIG_SYSVIPC`;
+this is an experimental native port, not a fully validated upstream hardware
+configuration. A tmpfs plus BusyBox mdev supplies device nodes. Kali still owns
+systemd, udev, desktop packages and apt; no OpenWrt runtime is used.
+
+Build the current generic ramdisk using the exact tested, private NWRT
+`init_boot_b.img` and the current source:
+
+```sh
+CC=aarch64-linux-gnu-gcc bash devices/shennong/tools/build-native-init.sh \
+  /path/to/tested-nwrt-init_boot_b.img /path/to/magiskboot \
+  devices/shennong/out/init_boot_b-kali.img
+```
+
+The builder preserves the hash-verified PixelOS first-stage init used only for
+REC dispatch. The shared kernel, vendor ramdisk, DTBO and vbmeta remain the
+verified stock-compatible NWRT artifacts. They never replace slot A.
+
+For an offline Kali arm64 root with XFCE, LightDM, Xorg modesetting, libinput,
+BusyBox static and OpenSSH installed, apply the maintained profile:
+
+```sh
+sudo bash devices/shennong/tools/configure-native-rootfs.sh \
+  /path/to/kali-root /path/to/host.pub
+```
+
+The profile creates a local `kali` / `kali` login, imports the supplied SSH
+public key and generates unique SSH host keys on first boot. USB NCM is
+`172.31.14.1/24` and does not advertise an Internet gateway. Software display
+rendering is selected until the graphics stack is validated. Automatic
+`boot-recovery` arming is disabled.
+
+Deploy only from authenticated REC, using
+`tools/install-from-recovery.sh` and a per-deployment payload directory in RAM.
+It requires checksums for every payload and every preserved A/REC partition,
+checks exact partition sizes, refuses a mounted linux_root, writes a fresh
+ext4 root and verifies the B-slot boot files. It does not switch slots or
+reboot automatically. Legacy fastboot installation commands below are retained
+for history and are not the current installation path.
+
+Current deployment status: the fresh Kali/XFCE root and B boot chain were
+written from REC and read-back checked on 2026-11-09. All preserved A-slot and
+REC hashes matched. The first boot did not expose USB management; native boot
+is not yet validated. The next step is to read persistent logs from REC.
+Display, touch, USB, Wi-Fi, modem and other hardware are not yet claimed to
+work in Kali.
+
 ## Architecture
 
 The first bootable milestone deliberately keeps the two layers separate:

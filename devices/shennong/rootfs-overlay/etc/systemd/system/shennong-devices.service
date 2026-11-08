@@ -1,0 +1,14 @@
+[Unit]
+Description=Stock Android kernel device-node compatibility
+DefaultDependencies=no
+After=systemd-remount-fs.service
+Before=sysinit.target systemd-udev-trigger.service shennong-hardware.service
+
+[Service]
+ExecStartPre=/bin/busybox mdev -s
+ExecStart=/bin/busybox mdev -df
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=sysinit.target

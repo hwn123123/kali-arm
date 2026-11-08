@@ -53,4 +53,14 @@ if [ -w /sys/module/firmware_class/parameters/path ] && \
         /sys/module/firmware_class/parameters/path || true
 fi
 
+# Match the proven stock touch driver ordering; keep the firmware untouched.
+modprobe xiaomi_touch || log 'xiaomi_touch module could not be loaded'
+modprobe synaptics_tcm2 || log 'Synaptics touch module could not be loaded'
+sleep 1
+touch_power=/sys/devices/platform/synaptics_tcm.0/synaptics_tcm/power_state
+touch_raw=/sys/devices/virtual/touch/touch_dev/enable_touch_raw
+[ ! -w "$touch_power" ] || printf 'resume\n' > "$touch_power"
+[ ! -w "$touch_raw" ] || printf '0\n' > "$touch_raw"
+/bin/busybox mdev -s
+
 log "hardware compatibility setup complete"
