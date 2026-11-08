@@ -51,10 +51,16 @@ ln -sfn "$gadget/functions/$function_name" \
     "$gadget/configs/c.1/$function_name"
 
 udc=
-for candidate in /sys/class/udc/*; do
-    [ -e "$candidate" ] || continue
-    udc=${candidate##*/}
-    break
+attempt=0
+while [ "$attempt" -lt 30 ]; do
+    for candidate in /sys/class/udc/*; do
+        [ -e "$candidate" ] || continue
+        udc=${candidate##*/}
+        break
+    done
+    [ -z "$udc" ] || break
+    attempt=$((attempt + 1))
+    sleep 1
 done
 [ -n "$udc" ] || {
     log 'no USB device controller is available'
