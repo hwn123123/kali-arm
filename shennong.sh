@@ -24,6 +24,8 @@ chown 0:0 "${work_dir}"
 # Preserve file modes and links, but never copy the checkout owner's UID/GID
 # onto security-sensitive rootfs directories such as /etc and /usr.
 cp -a --no-preserve=ownership devices/shennong/rootfs-overlay/. "${work_dir}/"
+# Device nodes are required even when no management SSH key was supplied.
+bash devices/shennong/tools/build-native-helpers.sh "${work_dir}"
 chmod 0755 "${work_dir}/usr/local/sbin/shennong-hardware-init"
 chmod 0755 "${work_dir}/usr/local/sbin/shennong-usb-network"
 chmod 0755 "${work_dir}/usr/local/sbin/shennong-expand-rootfs"

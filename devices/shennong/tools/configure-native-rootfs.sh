@@ -10,15 +10,7 @@ here=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 grep -qx 'device=shennong' "$root/etc/shennong-build"
 cp -a --no-preserve=ownership "$here/../rootfs-overlay/." "$root/"
 chmod 755 "$root/usr/local/sbin/"shennong-*
-input_gid=$(awk -F: '$1=="input" { print $3 }' "$root/etc/group")
-video_gid=$(awk -F: '$1=="video" { print $3 }' "$root/etc/group")
-[[ $input_gid =~ ^[0-9]+$ && $video_gid =~ ^[0-9]+$ ]]
-cat > "$root/etc/mdev.conf" <<EOF
-(null|zero|full|random|urandom|tty|ptmx) 0:0 0666
-input/.* 0:$input_gid 0660
-dri/.* 0:$video_gid 0660
-.* 0:0 0660
-EOF
+bash "$here/build-native-helpers.sh" "$root"
 chroot "$root" usermod -aG sudo,input,video,render kali
 printf 'kali:kali\n' | chroot "$root" chpasswd
 uid=$(awk -F: '$1=="kali" { print $3 }' "$root/etc/passwd")

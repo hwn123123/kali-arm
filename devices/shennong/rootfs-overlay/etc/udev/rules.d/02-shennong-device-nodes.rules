@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# Before normal ownership/seat rules: the stock kernel has no devtmpfs.
+ACTION=="add", ENV{MAJOR}=="?*", ENV{MINOR}=="?*", ENV{DEVNAME}=="?*", PROGRAM=="/usr/local/libexec/shennong-device-nodes --event"

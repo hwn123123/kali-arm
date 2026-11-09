@@ -5,10 +5,10 @@ After=systemd-remount-fs.service
 Before=sysinit.target systemd-udev-trigger.service shennong-hardware.service
 
 [Service]
-ExecStartPre=/bin/busybox mdev -s
-ExecStart=/bin/busybox mdev -df
-Restart=on-failure
-RestartSec=2
+Type=oneshot
+ExecStart=/usr/local/libexec/shennong-device-nodes --scan
+RemainAfterExit=yes
+TimeoutStartSec=15
 
 [Install]
 WantedBy=sysinit.target

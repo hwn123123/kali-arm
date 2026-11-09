@@ -11,7 +11,9 @@ NWRT's proven static PID-1 module/device discovery and recovery dispatch. The
 legacy shell init below is a historical input and must not be deployed. The
 stock kernel has no `CONFIG_DEVTMPFS`, `CONFIG_FHANDLE` or `CONFIG_SYSVIPC`;
 this is an experimental native port, not a fully validated upstream hardware
-configuration. A tmpfs plus BusyBox mdev supplies device nodes. Kali still owns
+configuration. A tmpfs plus the small `compat/device-nodes.c` helper supplies
+device nodes before the regular udev ownership rules. The helper handles no
+firmware requests and runs no second event daemon alongside udev. Kali still owns
 systemd, udev, desktop packages and apt; no OpenWrt runtime is used.
 
 Build the current generic ramdisk using the exact tested, private NWRT
@@ -56,7 +58,10 @@ started. USB management is not yet usable, and Xorg crashes during modesetting
 initialization. Current corrections cover device-role selection, ConfigFS
 function links, standard /dev permissions, existing firmware bind mounts,
 block-device alias checks, virtual display exclusion, and stock ADSP startup
-for the battery/Type-C channel. ADSP integration still needs hardware validation.
+for the battery/Type-C channel. The USB setup uses the vendor `mode=peripheral`
+control seen in working REC and does not wait for ADSP. ADSP integration still
+needs hardware validation. The native root configurator compiles the arm64
+device-node helper; set `CC` to an arm64 compiler if necessary.
 Display, touch, USB, Wi-Fi, modem and other hardware are not yet claimed to
 work in Kali.
 
@@ -88,8 +93,8 @@ The current test phone has this verified layout:
 | Start sector | `76197882` (4096-byte GPT sectors) |
 | End sector | `128626681` |
 | Size | `52428800` sectors / exactly 200 GiB |
-| Filesystem | intentionally unformatted until installation |
-| Recovery | identical custom multiboot recovery v1.9 on recovery A and B |
+| Filesystem | ext4, expanded to the dedicated 200 GiB partition |
+| Recovery | existing REC preserved; not replaced by the native Kali installer |
 
 Never hard-code `sda34` in an installer. Resolve the partition by GPT name
 `linux_root` and validate the disk GUID, partition GUID, sector range and exact
@@ -131,7 +136,11 @@ devices/shennong/tools/verify-private-inputs.sh \
   /path/to/shennong-kernel-prebuilt-6.1.138.tar.zst
 ```
 
-## Build stages
+## Historical build stages (superseded)
+
+The instructions in this section describe the earlier shell-init prototype.
+Use the native init and REC deployment flow at the top of this document for
+the current port. These notes are not instructions to replace the active REC.
 
 The v1.9 recovery keeps the tested graphical multiboot selector and is written
 identically to both recovery slots, so the stock slot-A recovery is no longer
@@ -284,9 +293,8 @@ The port is intentionally staged so failures remain diagnosable:
 4. the built-in CDC-NCM gadget exposes `172.31.14.1/24`, provides DHCP to the
    USB host and starts key-only SSH for the `kali` user; initramfs, hardware,
    USB-network and systemd-journal logs persist on `linux_root`;
-5. after USB and SSH are healthy, Kali writes the guarded slot-B readiness
-   token and arms the next boot for the shared multiboot recovery; the menu
-   clears that one-shot recovery request only when launching a selected system;
+5. keep existing recovery and Android slot A unchanged; do not automatically
+   arm recovery or switch slots from a normal Kali boot;
 6. display and touch;
 7. Wi-Fi/Bluetooth and audio;
 8. modem/telephony compatibility bridge;
