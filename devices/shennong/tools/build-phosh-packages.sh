@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-2.0-only
-# Build regular Debian packages for the Phosh-native brightness preference.
+# Build the Phosh-native brightness preference and phone home view.
 # Run in an arm64 Kali builder with `apt-get build-dep phosh` installed.
 set -euo pipefail
 [[ $# == 1 ]] || { echo "usage: $0 OUTPUT_DIR" >&2; exit 2; }
 [[ $(dpkg --print-architecture) == arm64 ]]
 here=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
-out=$(realpath -m "$1")
-mkdir -p "$out"
+out_root=$(realpath -m "$1")
+mkdir -p "$out_root"
 work=$(mktemp -d)
 trap 'rm -rf -- "$work"' EXIT
 version=0.58.0
-revision=0.58.0-1+shennong1
+revision=0.58.0-1+shennong2
+out="$out_root/$revision"
+mkdir -p "$out"
 for component in source debian; do
     if [[ $component == source ]]; then
         archive=${SHENNONG_PHOSH_SOURCE:-}
@@ -30,8 +32,10 @@ tar -xJf "$work/source.tar.xz" -C "$work"
 source_dir="$work/phosh-$version"
 tar -xJf "$work/debian.tar.xz" -C "$source_dir"
 patch -d "$source_dir" -p1 <"$here/../compat/phosh-manual-brightness.patch"
+patch -d "$source_dir" -p1 <"$here/../compat/phosh-native-home.patch"
 {
     printf 'phosh (%s) unstable; urgency=medium\n\n' "$revision"
+    printf '  * Add a native phone home page backed by Phosh favorites and its wall clock.\n'
     printf '  * Keep manual brightness in Phosh GSettings; default to full brightness.\n\n'
     printf ' -- Shennong port maintainers <root@shennong.invalid>  %s\n\n' "$(date -R)"
     cat "$source_dir/debian/changelog"
@@ -43,9 +47,11 @@ mv "$source_dir/debian/changelog.new" "$source_dir/debian/changelog"
     export DEB_BUILD_PROFILES='nodoc nocheck'
     dpkg-buildpackage -b -uc -us -Pnodoc,nocheck -j"$(nproc)"
 )
-cp "$work"/*.deb "$out/"
+cp "$work/phosh_${revision}_arm64.deb" \
+   "$work/phosh-common_${revision}_all.deb" \
+   "$work/phosh-plugins_${revision}_arm64.deb" "$out/"
 (
     cd "$out"
     sha256sum ./*.deb >SHA256SUMS
 )
-printf 'Built Phosh %s in %s\n' "$revision" "$out"
+printf 'Built Phosh runtime packages %s in %s\n' "$revision" "$out"

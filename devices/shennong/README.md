@@ -56,7 +56,7 @@ wallpaper under `rootfs-overlay/usr/share/backgrounds/shennong/`. The original
 PNG is part of the source. Wallpaper/theme settings use writable GSettings
 defaults, never dconf locks or scripts that repeatedly overwrite user choices.
 
-Phosh 0.58 does not ship a saved manual-brightness setting. The maintained
+The maintained Phosh patches keep these behaviors inside Phosh itself.
 `compat/phosh-manual-brightness.patch` adds `manual-brightness` to Phosh's own
 `mobi.phosh.shell.brightness` schema, defaults it to `1.0` and connects it to
 the existing brightness manager/slider. The slider saves the user's choice;
@@ -65,6 +65,14 @@ restores that preference through Phosh's existing logind backlight backend.
 There is no separate runtime brightness script or startup override. Normal
 idle blanking remains enabled and automatic brightness stays user-configurable.
 
+`compat/phosh-native-home.patch` changes Phosh's existing app-grid into a phone
+home page with Phosh's own clock, favorites, and an “All Apps” button. The full
+app grid and search stay available from that button, the Home button, or the
+normal Phosh page swipe. Favorite apps continue to use the `sm.puri.phosh`
+favorites setting and the existing long-press menu, so there is no second
+shortcut list or launcher process. Fresh installs start with Console, Mobile
+Settings, Firefox, and Files as favorites; users can change those in Phosh.
+
 Build standard Debian packages in an arm64 Kali builder with the normal
 Phosh build dependencies (`apt-get build-dep -Pnocheck,nodoc phosh`):
 
@@ -72,10 +80,13 @@ Phosh build dependencies (`apt-get build-dep -Pnocheck,nodoc phosh`):
 bash devices/shennong/tools/build-phosh-packages.sh /path/to/phosh-packages
 ```
 
-Pass that directory as `SHENNONG_PHOSH_PACKAGE_DIR` when creating/configuring
-the image. The configurator also accepts an image which already contains the
-patched packages. The tarballs are hash-pinned; the patch and build instructions
-are in this repository, with the original upstream sources preserved.
+The script writes only the three runtime packages into the versioned
+`/path/to/phosh-packages/0.58.0-1+shennong2/` directory. Pass
+`/path/to/phosh-packages` as `SHENNONG_PHOSH_PACKAGE_DIR` when creating or
+configuring the image. The configurator also accepts an image which already
+contains the patched packages. The tarballs are hash-pinned; patches and build
+instructions are in this repository, with the original upstream sources
+preserved.
 
 On-device validation used the real Phosh GTK slider through its accessibility
 interface: selecting `0.55` saved the same GSettings value and set the panel to

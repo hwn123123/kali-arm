@@ -1,0 +1,198 @@
+--- a/src/ui/app-grid.ui
++++ b/src/ui/app-grid.ui
+@@ -14,0 +15,65 @@
++          <object class="GtkBox" id="phone_home_page">
++            <property name="visible">1</property>
++            <property name="orientation">vertical</property>
++            <property name="valign">center</property>
++            <property name="spacing">12</property>
++            <style>
++              <class name="phosh-phone-home"/>
++            </style>
++            <child>
++              <object class="GtkBox">
++                <property name="visible">1</property>
++                <property name="orientation">vertical</property>
++                <property name="halign">center</property>
++                <property name="spacing">2</property>
++                <property name="margin-top">8</property>
++                <property name="margin-bottom">12</property>
++                <child>
++                  <object class="GtkLabel" id="home_clock">
++                    <property name="visible">1</property>
++                    <property name="label">--:--</property>
++                    <style><class name="phosh-phone-home-clock"/></style>
++                  </object>
++                </child>
++                <child>
++                  <object class="GtkLabel" id="home_date">
++                    <property name="visible">1</property>
++                    <property name="label"> </property>
++                    <style><class name="phosh-phone-home-date"/></style>
++                  </object>
++                </child>
++              </object>
++            </child>
++            <child>
++              <object class="GtkFlowBox" id="home_favs">
++                <property name="visible">1</property>
++                <property name="margin-start">3</property>
++                <property name="margin-end">3</property>
++                <property name="margin-top">6</property>
++                <property name="margin-bottom">6</property>
++                <property name="hexpand">1</property>
++                <property name="homogeneous">1</property>
++                <property name="min-children-per-line">4</property>
++                <property name="max-children-per-line">4</property>
++                <property name="selection-mode">none</property>
++                <property name="activate-on-single-click">0</property>
++                <property name="column-spacing">6</property>
++                <property name="row-spacing">6</property>
++              </object>
++            </child>
++            <child>
++              <object class="GtkButton" id="btn_all_apps">
++                <property name="visible">1</property>
++                <property name="halign">center</property>
++                <property name="relief">none</property>
++                <property name="label" translatable="yes">All Apps</property>
++                <signal name="clicked" handler="show_all_apps" object="PhoshAppGrid" swapped="yes"/>
++                <style><class name="phosh-phone-home-all-apps"/></style>
++              </object>
++            </child>
++          </object>
++          <packing>
++            <property name="name">phone_home</property>
++          </packing>
++        </child>
++        <child>
+@@ -20,0 +86,3 @@
++                <property name="margin-start">8</property>
++                <property name="margin-end">8</property>
++                <property name="margin-top">4</property>
+@@ -21,0 +90,13 @@
++                  <object class="GtkButton" id="btn_home">
++                    <property name="visible">1</property>
++                    <property name="relief">none</property>
++                    <property name="label" translatable="yes">Home</property>
++                    <signal name="clicked" handler="show_home_page" object="PhoshAppGrid" swapped="yes"/>
++                  </object>
++                </child>
++              </object>
++            </child>
++            <child>
++              <object class="GtkBox">
++                <property name="visible">1</property>
++                <child>
+--- a/src/app-grid.c
++++ b/src/app-grid.c
+@@ -17,0 +18 @@
++#include "wall-clock.h"
+@@ -50,0 +52,3 @@
++  GtkWidget *home_favs;
++  GtkWidget *home_clock;
++  GtkWidget *home_date;
+@@ -117,0 +122,3 @@
++static void show_main_grid (PhoshAppGrid *self);
++
++
+@@ -118,0 +126,32 @@
++show_home_page (PhoshAppGrid *self)
++{
++  PhoshAppGridPrivate *priv = phosh_app_grid_get_instance_private (self);
++
++  /* Close any open folder before returning to the home page. */
++  if (priv->open_folder != NULL)
++    show_main_grid (self);
++
++  hdy_deck_set_visible_child_name (HDY_DECK (priv->deck), "phone_home");
++}
++
++
++static void
++show_all_apps (PhoshAppGrid *self)
++{
++  show_main_grid (self);
++}
++
++
++static void
++update_home_clock (PhoshWallClock *clock, GParamSpec *pspec, PhoshAppGrid *self)
++{
++  PhoshAppGridPrivate *priv = phosh_app_grid_get_instance_private (self);
++  g_autofree char *date = phosh_wall_clock_local_date (clock);
++
++  gtk_label_set_text (GTK_LABEL (priv->home_clock),
++                      phosh_wall_clock_get_clock (clock, TRUE));
++  gtk_label_set_text (GTK_LABEL (priv->home_date), date ?: "");
++}
++
++
++static void
+@@ -439,0 +479,5 @@
++  gtk_flow_box_bind_model (GTK_FLOW_BOX (priv->home_favs),
++                           G_LIST_MODEL (favorites),
++                           create_favorite_launcher,
++                           self,
++                           NULL);
+@@ -473,0 +518,9 @@
++
++  /* Start the Phosh home view on every fresh overview open. */
++  hdy_deck_set_visible_child_name (HDY_DECK (priv->deck), "phone_home");
++  PhoshWallClock *clock = phosh_wall_clock_get_default ();
++  update_home_clock (clock, NULL, self);
++  g_signal_connect_object (clock, "notify::time", G_CALLBACK (update_home_clock),
++                           self, 0);
++  g_signal_connect_object (clock, "notify::date-time", G_CALLBACK (update_home_clock),
++                           self, 0);
+@@ -719,0 +773,3 @@
++  gtk_widget_class_bind_template_child_private (widget_class, PhoshAppGrid, home_clock);
++  gtk_widget_class_bind_template_child_private (widget_class, PhoshAppGrid, home_date);
++  gtk_widget_class_bind_template_child_private (widget_class, PhoshAppGrid, home_favs);
+@@ -735,0 +792,2 @@
++  gtk_widget_class_bind_template_callback (widget_class, show_home_page);
++  gtk_widget_class_bind_template_callback (widget_class, show_all_apps);
+@@ -769 +827 @@
+-  show_main_grid (self);
++  show_home_page (self);
+@@ -780,0 +839 @@
++  show_all_apps (self);
+--- a/src/stylesheet/common.css
++++ b/src/stylesheet/common.css
+@@ -396,0 +397,21 @@
++}
++
++.phosh-phone-home {
++  padding: 8px 6px 18px;
++}
++
++.phosh-phone-home-clock {
++  font-size: 3.2em;
++  font-weight: 300;
++}
++
++.phosh-phone-home-date {
++  font-size: 1.05em;
++  opacity: 0.9;
++}
++
++.phosh-phone-home-all-apps {
++  border-radius: 9999px;
++  padding: 8px 24px;
++  margin: 6px 0;
++  background: alpha(@phosh_bg_color,.45);
+@@ -398,0 +420,5 @@
++.phosh-phone-home-all-apps:active,
++.phosh-phone-home-all-apps:hover {
++  background: alpha(@phosh_bg_color,.7);
++}
++
+--- a/po/zh_CN.po
++++ b/po/zh_CN.po
+@@ -627,0 +628,6 @@
++
++msgid "All Apps"
++msgstr "所有应用"
++
++msgid "Home"
++msgstr "主屏幕"
