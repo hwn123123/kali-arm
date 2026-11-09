@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-2.0-only
-# Build the Phosh-native brightness preference and phone home view.
+# Build the Shennong Phosh home screen and mobile status bar.
 # Run in an arm64 Kali builder with `apt-get build-dep phosh` installed.
 set -euo pipefail
 [[ $# == 1 ]] || { echo "usage: $0 OUTPUT_DIR" >&2; exit 2; }
@@ -11,7 +11,7 @@ mkdir -p "$out_root"
 work=$(mktemp -d)
 trap 'rm -rf -- "$work"' EXIT
 version=0.58.0
-revision=0.58.0-1+shennong4
+revision=0.58.0-1+shennong6
 out="$out_root/$revision"
 mkdir -p "$out"
 for component in source debian; do
@@ -34,9 +34,10 @@ tar -xJf "$work/debian.tar.xz" -C "$source_dir"
 patch -d "$source_dir" -p1 <"$here/../compat/phosh-manual-brightness.patch"
 patch -d "$source_dir" -p1 <"$here/../compat/phosh-native-home.patch"
 patch -d "$source_dir" -p1 <"$here/../compat/phosh-phone-home-layout.patch"
+patch -d "$source_dir" -p1 <"$here/../compat/phosh-mobile-home-navigation.patch"
 {
     printf 'phosh (%s) unstable; urgency=medium\n\n' "$revision"
-    printf '  * Add a labelled two-row home grid and dock; size status icons and avoid the display cutout.\n'
+    printf '  * Move the clock right, enlarge the status bar, use a horizontal battery indicator, and swipe between home and apps.\n'
     printf '  * Keep manual brightness in Phosh GSettings; default to full brightness.\n\n'
     printf ' -- Shennong port maintainers <root@shennong.invalid>  %s\n\n' "$(date -R)"
     cat "$source_dir/debian/changelog"

@@ -1,0 +1,141 @@
+--- a/src/layout-manager.c
++++ b/src/layout-manager.c
+@@ -53,0 +54 @@
++  gboolean                    shennong_panel;
+@@ -306,0 +308,2 @@
++  if (self->shennong_panel && self->layout == PHOSH_SHELL_LAYOUT_DEVICE)
++    pos = PHOSH_LAYOUT_CLOCK_POS_RIGHT;
+@@ -435,0 +439,7 @@
++    for (guint i = 0; compatibles[i] != NULL; i++) {
++      if (g_str_has_prefix (compatibles[i], "qcom,pineapple")) {
++        self->shennong_panel = TRUE;
++        break;
++      }
++    }
++
+@@ -447,0 +458 @@
++        self->shennong_panel = self->panel != NULL;
+--- a/src/app-grid.c
++++ b/src/app-grid.c
+@@ -128,0 +129,23 @@
++update_deck_swipe_directions (HdyDeck       *deck,
++                              GParamSpec    *pspec,
++                              PhoshAppGrid  *self)
++{
++  const char *name;
++  gboolean home_page;
++  gboolean app_list;
++
++  (void) pspec;
++  g_return_if_fail (PHOSH_IS_APP_GRID (self));
++
++  name = hdy_deck_get_visible_child_name (deck);
++  home_page = g_strcmp0 (name, "phone_home") == 0;
++  app_list = g_strcmp0 (name, "main_grid") == 0;
++
++  /* A rightward swipe from home opens the app list; a leftward swipe returns.
++   * Keep folders on their explicit back button. */
++  hdy_deck_set_can_swipe_back (deck, home_page);
++  hdy_deck_set_can_swipe_forward (deck, app_list);
++}
++
++
++static void
+@@ -508,0 +532 @@
++  GtkWidget *main_grid;
+@@ -511,0 +536,9 @@
++
++  /* Put the app list before home so a rightward swipe reveals apps. */
++  main_grid = hdy_deck_get_child_by_name (HDY_DECK (priv->deck), "main_grid");
++  if (main_grid != NULL)
++    hdy_deck_reorder_child_after (HDY_DECK (priv->deck), main_grid, NULL);
++  else
++    g_warning ("Could not find the Phosh app-list page for swipe navigation");
++  g_signal_connect (priv->deck, "notify::visible-child-name",
++                    G_CALLBACK (update_deck_swipe_directions), self);
+@@ -569,0 +603 @@
++  update_deck_swipe_directions (HDY_DECK (priv->deck), NULL, self);
+--- a/src/top-panel.h
++++ b/src/top-panel.h
+@@ -16,2 +16,2 @@
+-#define PHOSH_TOP_BAR_HEIGHT 32
+-#define PHOSH_TOP_BAR_ICON_PIXEL_SIZE 20
++#define PHOSH_TOP_BAR_HEIGHT 40
++#define PHOSH_TOP_BAR_ICON_PIXEL_SIZE 24
+--- a/src/ui/app-grid.ui
++++ b/src/ui/app-grid.ui
+@@ -13,0 +14 @@
++        <property name="can-swipe-forward">1</property>
+@@ -75 +76,2 @@
+-                <property name="visible">1</property>
++                <property name="visible">0</property>
++                <property name="no-show-all">1</property>
+@@ -118 +120,2 @@
+-                    <property name="visible">1</property>
++                    <property name="visible">0</property>
++                    <property name="no-show-all">1</property>
+--- a/src/ui/top-panel.ui
++++ b/src/ui/top-panel.ui
+@@ -220 +220 @@
+-                    <property name="height-request">32</property>
++                    <property name="height-request">40</property>
+@@ -328 +328,2 @@
+-                                <property name="pixel-size">20</property>
++                                <property name="pixel-size">24</property>
++                                <property name="show-detail">1</property>
+@@ -402 +403 @@
+-    <property name="pixel-size">20</property>
++    <property name="pixel-size">24</property>
+@@ -409 +410 @@
+-    <property name="pixel-size">20</property>
++    <property name="pixel-size">24</property>
+@@ -413 +414 @@
+-    <property name="pixel-size">20</property>
++    <property name="pixel-size">24</property>
+@@ -417 +418 @@
+-    <property name="pixel-size">20</property>
++    <property name="pixel-size">24</property>
+@@ -421 +422 @@
+-    <property name="pixel-size">20</property>
++    <property name="pixel-size">24</property>
+@@ -425 +426 @@
+-    <property name="pixel-size">20</property>
++    <property name="pixel-size">24</property>
+@@ -430 +431 @@
+-    <property name="pixel-size">20</property>
++    <property name="pixel-size">24</property>
+@@ -434 +435 @@
+-    <property name="pixel-size">20</property>
++    <property name="pixel-size">24</property>
+@@ -437 +438 @@
+-    <property name="pixel-size">20</property>
++    <property name="pixel-size">24</property>
+@@ -440 +441 @@
+-    <property name="pixel-size">20</property>
++    <property name="pixel-size">24</property>
+--- a/src/stylesheet/common.css
++++ b/src/stylesheet/common.css
+@@ -27,2 +27,2 @@
+-  padding-top: 4px;
+-  padding-bottom: 4px;
++  padding-top: 6px;
++  padding-bottom: 6px;
+@@ -33 +33 @@
+-  font-size: 15px;
++  font-size: 18px;
+@@ -44 +44 @@
+-  font-size: 17px;
++  font-size: 20px;
+@@ -54 +54,11 @@
+-  padding-left: 6px;
++  padding-left: 10px;
++}
++
++phosh-battery-info image {
++  -gtk-icon-transform: rotate(90deg);
++}
++
++phosh-battery-info label {
++  font-size: 14px;
++  font-weight: 800;
++  font-feature-settings: "tnum";

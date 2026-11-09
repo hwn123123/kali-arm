@@ -25,7 +25,7 @@ case "$ui" in
         done
         if [[ -n ${SHENNONG_PHOSH_PACKAGE_DIR:-} ]]; then
             package_root=$(realpath "$SHENNONG_PHOSH_PACKAGE_DIR")
-            package_revision=0.58.0-1+shennong4
+            package_revision=0.58.0-1+shennong6
             if [[ -f $package_root/$package_revision/phosh_${package_revision}_arm64.deb ]]; then
                 packages=$package_root/$package_revision
             else
@@ -33,15 +33,15 @@ case "$ui" in
             fi
             stage="$root/tmp/shennong-phosh-packages"
             install -d "$stage"
-            for name in phosh_0.58.0-1+shennong4_arm64.deb phosh-common_0.58.0-1+shennong4_all.deb \
-                phosh-plugins_0.58.0-1+shennong4_arm64.deb; do
+            for name in phosh_0.58.0-1+shennong6_arm64.deb phosh-common_0.58.0-1+shennong6_all.deb \
+                phosh-plugins_0.58.0-1+shennong6_arm64.deb; do
                 [[ -f $packages/$name ]]
                 cp "$packages/$name" "$stage/$name"
             done
             chroot "$root" env DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install \
-                /tmp/shennong-phosh-packages/phosh_0.58.0-1+shennong4_arm64.deb \
-                /tmp/shennong-phosh-packages/phosh-common_0.58.0-1+shennong4_all.deb \
-                /tmp/shennong-phosh-packages/phosh-plugins_0.58.0-1+shennong4_arm64.deb
+                /tmp/shennong-phosh-packages/phosh_0.58.0-1+shennong6_arm64.deb \
+                /tmp/shennong-phosh-packages/phosh-common_0.58.0-1+shennong6_all.deb \
+                /tmp/shennong-phosh-packages/phosh-plugins_0.58.0-1+shennong6_arm64.deb
             rm -rf -- "$stage"
         fi
         chroot "$root" gsettings list-keys mobi.phosh.shell.brightness | grep -qx manual-brightness || {

@@ -65,16 +65,18 @@ restores that preference through Phosh's existing logind backlight backend.
 There is no separate runtime brightness script or startup override. Normal
 idle blanking remains enabled and automatic brightness stays user-configurable.
 
-`compat/phosh-native-home.patch` and `compat/phosh-phone-home-layout.patch` change
-Phosh's existing app-grid into a full-height phone-style home page with a large
-upper-left clock, a four-column shortcut grid, a bottom dock, and an “All Apps”
-button. The status clock uses Phosh’s own cutout layout with a Shennong display
-profile embedded in the shell. The full app grid and search remain available
-from the All Apps button, the Home button, or the normal Phosh page swipe.
-Shortcuts and dock entries come from the same `sm.puri.phosh` favorites setting
-and retain Phosh's existing long-press menu. Fresh installs start with
-Calculator, Parole, Mousepad, NetHunter, Atril, Ristretto, Volume Control, and
-Kali Tweaks above a dock with Console, Firefox, Files, and Mobile Settings. Users can reorder and change them in Phosh.
+`compat/phosh-native-home.patch`, `compat/phosh-phone-home-layout.patch`, and
+`compat/phosh-mobile-home-navigation.patch` change Phosh's existing app-grid
+into a full-height phone-style home page with a large clock, a four-column
+shortcut grid, and a bottom dock. The status clock sits to the right of the
+Shennong display cutout. The larger status bar uses a horizontal battery symbol
+with its percentage. Swipe right from the home page to open the searchable app
+list, then swipe left to return; the separate All Apps and Home buttons are
+hidden. Shortcuts and dock entries come from the same `sm.puri.phosh`
+favorites setting and retain Phosh's existing long-press menu. Fresh installs
+start with Calculator, Parole, Mousepad, NetHunter, Atril, Ristretto, Volume
+Control, and Kali Tweaks above a dock with Console, Firefox, Files, and Mobile
+Settings. Users can reorder and change them in Phosh.
 
 Build standard Debian packages in an arm64 Kali builder with the normal
 Phosh build dependencies (`apt-get build-dep -Pnocheck,nodoc phosh`):
@@ -84,7 +86,7 @@ bash devices/shennong/tools/build-phosh-packages.sh /path/to/phosh-packages
 ```
 
 The script writes only the three runtime packages into the versioned
-`/path/to/phosh-packages/0.58.0-1+shennong4/` directory. Pass
+`/path/to/phosh-packages/0.58.0-1+shennong6/` directory. Pass
 `/path/to/phosh-packages` as `SHENNONG_PHOSH_PACKAGE_DIR` when creating or
 configuring the image. The configurator also accepts an image which already
 contains the patched packages. The tarballs are hash-pinned; patches and build
