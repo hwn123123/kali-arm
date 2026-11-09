@@ -54,8 +54,11 @@ corrected in the device's Phoc configuration. Automatic
 The desktop and lock screen use the project-generated cartoon blue-dragon
 wallpaper under `rootfs-overlay/usr/share/backgrounds/shennong/`. The original
 PNG is part of the source. `shennong-display-defaults.service` sets the stock
-panel to its real `max_brightness` once per boot, after systemd restores its
-saved backlight state and before Phosh starts. The slider remains usable;
+panel to its real `max_brightness` after systemd restores its saved state.
+The session's startup hook reapplies it once Phosh's brightness manager is
+ready, then sends a targeted backlight udev event to synchronize the slider.
+This prevents the vendor's first DRM modeset from restoring an old dim value;
+it runs only during startup, without a background polling loop. The slider remains usable;
 automatic ambient dimming defaults off and normal idle blanking stays enabled.
 
 Deploy only from authenticated REC, using

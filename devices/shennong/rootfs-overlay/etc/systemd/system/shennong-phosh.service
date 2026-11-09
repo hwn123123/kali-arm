@@ -30,6 +30,7 @@ Environment=GSK_RENDERER=cairo
 Environment=GDK_BACKEND=wayland
 Environment=LIBGL_ALWAYS_SOFTWARE=1
 ExecStart=/usr/bin/phosh-session
+ExecStartPost=+/usr/local/sbin/shennong-display-defaults --session-ready
 Restart=on-failure
 RestartSec=5
 StandardInput=null

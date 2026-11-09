@@ -1,7 +1,25 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-2.0-only
-# Apply the owner's startup brightness once, before the mobile session.
+# Apply the owner's startup brightness without a background polling daemon.
 set -eu
+if [ "${1:-}" = --session-ready ]; then
+    # The vendor's first DRM modeset can restore an old, dim panel value.
+    # Wait for Phosh's brightness manager, then apply the startup value and
+    # notify its regular udev listener so the slider reflects the real panel.
+    ready=
+    for attempt in $(seq 1 12); do
+        if runuser -u kali -- env XDG_RUNTIME_DIR="/run/user/$(id -u kali)" \
+            timeout 1 gdbus call --session --dest org.freedesktop.DBus \
+            --object-path /org/freedesktop/DBus \
+            --method org.freedesktop.DBus.NameHasOwner org.gnome.Shell.Brightness \
+            2>/dev/null | grep -q true; then
+            ready=yes
+            break
+        fi
+        sleep 1
+    done
+    [ -n "$ready" ] || { echo 'Phosh brightness manager did not become ready' >&2; exit 1; }
+fi
 panel=/sys/class/backlight/panel0-backlight
 maximum=$(cat "$panel/max_brightness")
 case "$maximum" in ''|*[!0-9]*) echo 'Invalid panel brightness range' >&2; exit 1;; esac
@@ -10,3 +28,6 @@ printf '%s\n' "$maximum" >"$panel/brightness"
 actual=$(cat "$panel/brightness")
 [ "$actual" = "$maximum" ] || { echo 'Could not set startup brightness' >&2; exit 1; }
 printf 'Startup panel brightness: %s/%s (100%%)\n' "$actual" "$maximum"
+if [ "${1:-}" = --session-ready ]; then
+    udevadm trigger --action=change "$panel"
+fi
