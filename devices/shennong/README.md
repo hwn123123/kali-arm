@@ -70,9 +70,10 @@ idle blanking remains enabled and automatic brightness stays user-configurable.
 into a full-height phone-style home page with a large clock, a four-column
 shortcut grid, and a bottom dock. The status clock sits to the right of the
 Shennong display cutout. The larger status bar uses a horizontal battery symbol
-with its percentage. Swipe right from the home page to open the searchable app
-list, then swipe left to return; the separate All Apps and Home buttons are
-hidden. Shortcuts and dock entries come from the same `sm.puri.phosh`
+with its percentage. Swipe left from the home page to open the next app page and continue
+through additional pages; swipe right to return. Non-favorite apps are split
+into four-column phone pages with a page counter. The separate All Apps and
+Home buttons are hidden. Shortcuts and dock entries come from the same `sm.puri.phosh`
 favorites setting and retain Phosh's existing long-press menu. Fresh installs
 start with Calculator, Parole, Mousepad, NetHunter, Atril, Ristretto, Volume
 Control, and Kali Tweaks above a dock with Console, Firefox, Files, and Mobile
@@ -86,7 +87,7 @@ bash devices/shennong/tools/build-phosh-packages.sh /path/to/phosh-packages
 ```
 
 The script writes only the three runtime packages into the versioned
-`/path/to/phosh-packages/0.58.0-1+shennong6/` directory. Pass
+`/path/to/phosh-packages/0.58.0-1+shennong7/` directory. Pass
 `/path/to/phosh-packages` as `SHENNONG_PHOSH_PACKAGE_DIR` when creating or
 configuring the image. The configurator also accepts an image which already
 contains the patched packages. The tarballs are hash-pinned; patches and build

@@ -17,44 +17,178 @@
 +        self->shennong_panel = self->panel != NULL;
 --- a/src/app-grid.c
 +++ b/src/app-grid.c
-@@ -128,0 +129,23 @@
+@@ -55,0 +56 @@
++  GtkWidget *home_page_indicator;
+@@ -77,0 +79 @@
++  GPtrArray *home_app_pages;
+@@ -125,0 +128,37 @@
++
++
++static void
 +update_deck_swipe_directions (HdyDeck       *deck,
 +                              GParamSpec    *pspec,
 +                              PhoshAppGrid  *self)
 +{
-+  const char *name;
-+  gboolean home_page;
-+  gboolean app_list;
++  PhoshAppGridPrivate *priv;
++  GtkWidget *visible;
++  GtkWidget *home;
++  gboolean can_swipe_back = FALSE;
++  gboolean can_swipe_forward = FALSE;
 +
 +  (void) pspec;
 +  g_return_if_fail (PHOSH_IS_APP_GRID (self));
 +
-+  name = hdy_deck_get_visible_child_name (deck);
-+  home_page = g_strcmp0 (name, "phone_home") == 0;
-+  app_list = g_strcmp0 (name, "main_grid") == 0;
++  priv = phosh_app_grid_get_instance_private (self);
++  visible = hdy_deck_get_visible_child (deck);
++  home = hdy_deck_get_child_by_name (deck, "phone_home");
 +
-+  /* A rightward swipe from home opens the app list; a leftward swipe returns.
-+   * Keep folders on their explicit back button. */
-+  hdy_deck_set_can_swipe_back (deck, home_page);
-+  hdy_deck_set_can_swipe_forward (deck, app_list);
++  if (visible == home) {
++    can_swipe_forward = priv->home_app_pages && priv->home_app_pages->len > 0;
++  } else if (priv->home_app_pages) {
++    for (guint i = 0; i < priv->home_app_pages->len; i++) {
++      if (g_ptr_array_index (priv->home_app_pages, i) != visible)
++        continue;
++
++      can_swipe_back = TRUE;
++      can_swipe_forward = i + 1 < priv->home_app_pages->len;
++      break;
++    }
++  }
++
++  /* Left swipes advance through phone-style app pages; right swipes return. */
++  hdy_deck_set_can_swipe_back (deck, can_swipe_back);
++  hdy_deck_set_can_swipe_forward (deck, can_swipe_forward);
++}
+@@ -501,0 +541,110 @@
++#define HOME_APPS_PER_PAGE 16
++
++
++static GtkWidget *
++create_home_app_page (PhoshAppGrid *self, guint page_num, guint n_pages, GListModel *apps)
++{
++  GtkWidget *page = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
++  GtkWidget *scrolled = gtk_scrolled_window_new (NULL, NULL);
++  GtkWidget *flow = gtk_flow_box_new ();
++  GtkWidget *indicator = gtk_label_new (NULL);
++  GListStore *page_apps = g_list_store_new (G_TYPE_OBJECT);
++  guint start = page_num * HOME_APPS_PER_PAGE;
++  guint end = MIN (start + HOME_APPS_PER_PAGE, g_list_model_get_n_items (apps));
++  g_autofree char *page_text = g_strdup_printf ("%u / %u", page_num + 2, n_pages + 1);
++
++  gtk_widget_set_visible (page, TRUE);
++  gtk_widget_set_hexpand (page, TRUE);
++  gtk_widget_set_vexpand (page, TRUE);
++  gtk_style_context_add_class (gtk_widget_get_style_context (page), "phosh-phone-home-app-page");
++
++  gtk_widget_set_visible (scrolled, TRUE);
++  gtk_widget_set_hexpand (scrolled, TRUE);
++  gtk_widget_set_vexpand (scrolled, TRUE);
++  gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (scrolled), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
++  gtk_container_add (GTK_CONTAINER (page), scrolled);
++
++  gtk_widget_set_visible (flow, TRUE);
++  gtk_widget_set_hexpand (flow, TRUE);
++  gtk_widget_set_valign (flow, GTK_ALIGN_CENTER);
++  gtk_widget_set_margin_start (flow, 8);
++  gtk_widget_set_margin_end (flow, 8);
++  gtk_widget_set_margin_top (flow, 20);
++  gtk_widget_set_margin_bottom (flow, 20);
++  gtk_flow_box_set_homogeneous (GTK_FLOW_BOX (flow), TRUE);
++  gtk_flow_box_set_min_children_per_line (GTK_FLOW_BOX (flow), 4);
++  gtk_flow_box_set_max_children_per_line (GTK_FLOW_BOX (flow), 4);
++  gtk_flow_box_set_selection_mode (GTK_FLOW_BOX (flow), GTK_SELECTION_NONE);
++  gtk_flow_box_set_activate_on_single_click (GTK_FLOW_BOX (flow), FALSE);
++  gtk_flow_box_set_column_spacing (GTK_FLOW_BOX (flow), 8);
++  gtk_flow_box_set_row_spacing (GTK_FLOW_BOX (flow), 12);
++  gtk_container_add (GTK_CONTAINER (scrolled), flow);
++
++  for (guint i = start; i < end; i++) {
++    GObject *app = g_list_model_get_item (apps, i);
++    if (app) {
++      g_list_store_append (page_apps, app);
++      g_object_unref (app);
++    }
++  }
++  gtk_flow_box_bind_model (GTK_FLOW_BOX (flow), G_LIST_MODEL (page_apps), create_launcher, self, NULL);
++  g_object_unref (page_apps);
++
++  gtk_widget_set_visible (indicator, TRUE);
++  gtk_widget_set_halign (indicator, GTK_ALIGN_CENTER);
++  gtk_widget_set_margin_top (indicator, 6);
++  gtk_widget_set_margin_bottom (indicator, 16);
++  gtk_label_set_text (GTK_LABEL (indicator), page_text);
++  gtk_style_context_add_class (gtk_widget_get_style_context (indicator), "phosh-phone-home-page-indicator");
++  gtk_box_pack_end (GTK_BOX (page), indicator, FALSE, FALSE, 0);
++
++  return page;
 +}
 +
 +
 +static void
-@@ -508,0 +532 @@
-+  GtkWidget *main_grid;
-@@ -511,0 +536,9 @@
++rebuild_home_app_pages (PhoshAppGrid *self)
++{
++  PhoshAppGridPrivate *priv = phosh_app_grid_get_instance_private (self);
++  HdyDeck *deck = HDY_DECK (priv->deck);
++  GtkWidget *home = hdy_deck_get_child_by_name (deck, "phone_home");
++  GtkWidget *visible = hdy_deck_get_visible_child (deck);
++  guint n_apps = g_list_model_get_n_items (G_LIST_MODEL (priv->model));
++  guint n_pages = (n_apps + HOME_APPS_PER_PAGE - 1) / HOME_APPS_PER_PAGE;
++  GtkWidget *after = home;
 +
-+  /* Put the app list before home so a rightward swipe reveals apps. */
-+  main_grid = hdy_deck_get_child_by_name (HDY_DECK (priv->deck), "main_grid");
-+  if (main_grid != NULL)
-+    hdy_deck_reorder_child_after (HDY_DECK (priv->deck), main_grid, NULL);
++  for (guint i = 0; i < (priv->home_app_pages ? priv->home_app_pages->len : 0); i++) {
++    GtkWidget *page = g_ptr_array_index (priv->home_app_pages, i);
++    if (visible == page)
++      hdy_deck_set_visible_child (deck, home);
++    gtk_container_remove (GTK_CONTAINER (deck), page);
++  }
++  if (priv->home_app_pages)
++    g_ptr_array_set_size (priv->home_app_pages, 0);
 +  else
-+    g_warning ("Could not find the Phosh app-list page for swipe navigation");
-+  g_signal_connect (priv->deck, "notify::visible-child-name",
++    priv->home_app_pages = g_ptr_array_new ();
++
++  for (guint i = 0; i < n_pages; i++) {
++    GtkWidget *page = create_home_app_page (self, i, n_pages, G_LIST_MODEL (priv->model));
++    hdy_deck_insert_child_after (deck, page, after);
++    g_ptr_array_add (priv->home_app_pages, page);
++    after = page;
++  }
++
++  if (priv->home_page_indicator) {
++    g_autofree char *page_text = g_strdup_printf ("1 / %u", n_pages + 1);
++    gtk_label_set_text (GTK_LABEL (priv->home_page_indicator), page_text);
++  }
++  update_deck_swipe_directions (deck, NULL, self);
++}
++
++
++static void
++on_home_apps_changed (GListModel *model, guint position, guint removed, guint added, PhoshAppGrid *self)
++{
++  (void) position;
++  (void) removed;
++  (void) added;
++  rebuild_home_app_pages (self);
++}
++
+@@ -508,0 +658 @@
++  GtkWidget *main_grid;
+@@ -511,0 +662,6 @@
++
++  main_grid = hdy_deck_get_child_by_name (HDY_DECK (priv->deck), "main_grid");
++  if (main_grid == NULL)
++    g_warning ("Could not find the Phosh app list page");
++  g_signal_connect (priv->deck, "notify::visible-child",
 +                    G_CALLBACK (update_deck_swipe_directions), self);
-@@ -569,0 +603 @@
+@@ -552,0 +709,3 @@
++  g_signal_connect (priv->model, "items-changed",
++                    G_CALLBACK (on_home_apps_changed), self);
++  rebuild_home_app_pages (self);
+@@ -569,0 +729 @@
 +  update_deck_swipe_directions (HDY_DECK (priv->deck), NULL, self);
+@@ -588,0 +749 @@
++  g_clear_pointer (&priv->home_app_pages, g_ptr_array_unref);
+@@ -825,0 +987 @@
++  gtk_widget_class_bind_template_child_private (widget_class, PhoshAppGrid, home_page_indicator);
 --- a/src/top-panel.h
 +++ b/src/top-panel.h
 @@ -16,2 +16,2 @@
@@ -66,11 +200,22 @@
 +++ b/src/ui/app-grid.ui
 @@ -13,0 +14 @@
 +        <property name="can-swipe-forward">1</property>
-@@ -75 +76,2 @@
+@@ -73,0 +75,10 @@
++              <object class="GtkLabel" id="home_page_indicator">
++                <property name="visible">1</property>
++                <property name="halign">center</property>
++                <property name="margin-top">6</property>
++                <property name="margin-bottom">6</property>
++                <property name="label">1 / 1</property>
++                <style><class name="phosh-phone-home-page-indicator"/></style>
++              </object>
++            </child>
++            <child>
+@@ -75 +86,2 @@
 -                <property name="visible">1</property>
 +                <property name="visible">0</property>
 +                <property name="no-show-all">1</property>
-@@ -118 +120,2 @@
+@@ -118 +130,2 @@
 -                    <property name="visible">1</property>
 +                    <property name="visible">0</property>
 +                    <property name="no-show-all">1</property>
@@ -139,3 +284,18 @@
 +  font-size: 14px;
 +  font-weight: 800;
 +  font-feature-settings: "tnum";
+@@ -430,0 +441,14 @@
++.phosh-phone-home-app-page {
++  padding: 12px 8px 0;
++}
++
++.phosh-phone-home-app-page phosh-app-grid-button button {
++  min-height: 82px;
++}
++
++.phosh-phone-home-page-indicator {
++  opacity: 0.72;
++  font-size: 13px;
++  font-feature-settings: "tnum";
++}
++

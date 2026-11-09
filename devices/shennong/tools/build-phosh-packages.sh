@@ -11,7 +11,7 @@ mkdir -p "$out_root"
 work=$(mktemp -d)
 trap 'rm -rf -- "$work"' EXIT
 version=0.58.0
-revision=0.58.0-1+shennong6
+revision=0.58.0-1+shennong7
 out="$out_root/$revision"
 mkdir -p "$out"
 for component in source debian; do
