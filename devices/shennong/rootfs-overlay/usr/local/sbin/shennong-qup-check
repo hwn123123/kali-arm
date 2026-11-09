@@ -1,0 +1,24 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# QUP firmware is selected by the bootloader, before the Kali root is mounted.
+# Starting ADSP against blank B-slot microcode causes QUP_ERR_FATAL and reboot.
+set -eu
+find_partition() {
+    for prefix in /dev/disk/by-partlabel /dev/block/by-name; do
+        [ -b "$prefix/$1" ] && { printf '%s\n' "$prefix/$1"; return 0; }
+    done
+    return 1
+}
+a=$(find_partition qupfw_a)
+b=$(find_partition qupfw_b)
+[ "$(blockdev --getsize64 "$a")" = 131072 ]
+[ "$(blockdev --getsize64 "$b")" = 131072 ]
+magic=$(od -An -tx1 -N4 "$a" | tr -d ' \n')
+[ "$magic" = 7f454c46 ] || {
+    echo 'QUP compatibility: slot A does not contain an ELF firmware image' >&2
+    exit 1
+}
+cmp -s "$a" "$b" || {
+    echo 'QUP compatibility: slot B firmware differs from the working slot A; repair from REC before starting ADSP or touch' >&2
+    exit 1
+}

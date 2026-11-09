@@ -53,17 +53,29 @@ for history and are not the current installation path.
 
 Current deployment status: the fresh Kali/XFCE root and B boot chain were
 written from REC and read-back checked on 2026-11-09. All preserved A-slot and
-REC hashes matched. Persistent logs from REC confirm native Kali systemd, udev and OpenSSH
-started. USB management is not yet usable, and Xorg crashes during modesetting
+REC hashes matched. Native Kali systemd, udev, D-Bus, USB NCM DHCP and key-based
+OpenSSH were verified live over USB on 2026-11-09. The base system ran beyond
+two minutes without automatic reboot. Xorg still crashes during modesetting
 initialization. Current corrections cover device-role selection, ConfigFS
 function links, standard /dev permissions, existing firmware bind mounts,
 block-device alias checks, virtual display exclusion, and stock ADSP startup
 for the battery/Type-C channel. The USB setup uses the vendor `mode=peripheral`
 control seen in working REC and does not wait for ADSP. ADSP integration still
 needs hardware validation. The native root configurator compiles the arm64
-device-node helper; set `CC` to an arm64 compiler if necessary.
-Display, touch, USB, Wi-Fi, modem and other hardware are not yet claimed to
-work in Kali.
+device-node helper; set `CC` to an arm64 compiler if necessary. The local
+`80-drivers.rules` override leaves board drivers under explicit stock module
+ordering: concurrent modalias loads were observed blocking `uevent_show` and
+`async_synchronize_cookie`. External-device autoload remains enabled.
+
+ADSP startup was captured reaching remoteproc online, then immediately
+reporting `qup_os_island.c:151:QUP_ERR_FATAL` and resetting the device. SPI touch
+also reported `Invalid proto 255`. This matches the earlier NWRT blank-QUP
+firmware failure; current partition readback is required before claiming that
+root cause. `shennong-qup-check` and the REC installer refuse mismatched A/B QUP
+firmware so this condition cannot silently trigger ADSP on subsequent boots.
+The check never writes either slot. Display, touch, ADSP, Wi-Fi, modem and
+other hardware are not yet claimed to work in Kali. Temporary service masks
+used to isolate this failure are diagnostic only and are not part of the profile.
 
 ## Architecture
 

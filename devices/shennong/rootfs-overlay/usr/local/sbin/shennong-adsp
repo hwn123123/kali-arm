@@ -3,9 +3,11 @@
 # Use the same stock loader entry point as Xiaomi recovery and NWRT.
 set -eu
 exec >>/var/log/shennong-adsp.log 2>&1
+/usr/local/sbin/shennong-qup-check
 for module in q6_pdr_dlkm q6_notifier_dlkm snd_event_dlkm gpr_dlkm \
-    spf_core_dlkm adsp_loader_dlkm frpc_adsprpc; do
-    modprobe "$module"
+    spf_core_dlkm adsp_loader_dlkm; do
+    [ ! -d "/sys/module/$module" ] || continue
+    insmod "/lib/modules/$(uname -r)/extra/vendor_dlkm/$module.ko"
 done
 adsp=
 for candidate in /sys/class/remoteproc/remoteproc*; do

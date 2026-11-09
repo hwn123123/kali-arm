@@ -1,8 +1,9 @@
 [Unit]
 Description=Xiaomi 14 Pro USB network and SSH management link
-After=local-fs.target shennong-hardware.service
-Before=NetworkManager.service ssh.service
-Wants=ssh.service
+DefaultDependencies=no
+After=systemd-remount-fs.service shennong-devices.service sys-kernel-config.mount
+Before=systemd-udev-trigger.service sysinit.target NetworkManager.service ssh.service
+Wants=sys-kernel-config.mount
 
 [Service]
 Type=oneshot
@@ -10,4 +11,4 @@ ExecStart=/usr/local/sbin/shennong-usb-network
 RemainAfterExit=yes
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=sysinit.target

@@ -38,12 +38,6 @@ static int create_node(const char *name, unsigned major_id, unsigned minor_id,
         snprintf(path, sizeof(path), "/dev/%s", name) >= (int)sizeof(path))
         return -1;
     dev_t device = makedev(major_id, minor_id);
-    if (lstat(path, &st) == 0) {
-        /* Preserve permissions already assigned by udev, and never replace
-         * existing files or symlinks such as /dev/ptmx. */
-        return ((S_ISCHR(st.st_mode) || S_ISBLK(st.st_mode)) &&
-                st.st_rdev == device) || S_ISLNK(st.st_mode) ? 0 : -1;
-    }
     if (!block && (!strcmp(name, "null") || !strcmp(name, "zero") ||
                    !strcmp(name, "full") || !strcmp(name, "random") ||
                    !strcmp(name, "urandom") || !strcmp(name, "tty") ||
@@ -53,6 +47,16 @@ static int create_node(const char *name, unsigned major_id, unsigned minor_id,
     else if (!strncmp(name, "dri/render", 10)) gid = group_id("render");
     else if (!strncmp(name, "dri/", 4)) gid = group_id("video");
     if (gid) mode = (mode & S_IFMT) | 0660;
+    if (lstat(path, &st) == 0) {
+        /* Initramfs nodes can inherit umask 022. Repair the public pseudo
+         * devices and input/DRM groups as well as creating missing nodes. */
+        if (S_ISLNK(st.st_mode)) return 0;
+        if (!(block ? S_ISBLK(st.st_mode) : S_ISCHR(st.st_mode)) ||
+            st.st_rdev != device) return -1;
+        if ((mode & 0777) == 0666 || gid)
+            return chown(path, 0, gid) || chmod(path, mode & 0777) ? -1 : 0;
+        return 0; /* Preserve all other normal udev ownership assignments. */
+    }
     for (char *p = path + 5; *p; ++p) {
         if (*p != '/') continue;
         *p = 0;

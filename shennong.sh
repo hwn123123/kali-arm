@@ -58,6 +58,7 @@ systemctl disable shennong-arm-next-recovery.service || true
 systemctl enable shennong-devices.service
 systemctl enable shennong-ssh-hostkeys.service
 systemctl enable shennong-adsp.service
+systemctl enable shennong-touch.service
 
 if ! id kali >/dev/null 2>&1; then
     useradd --create-home --shell /bin/bash --groups sudo kali

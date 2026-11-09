@@ -17,7 +17,7 @@ uid=$(awk -F: '$1=="kali" { print $3 }' "$root/etc/passwd")
 gid=$(awk -F: '$1=="kali" { print $4 }' "$root/etc/passwd")
 install -d -m700 -o "$uid" -g "$gid" "$root/home/kali/.ssh"
 install -m600 -o "$uid" -g "$gid" "$key" "$root/home/kali/.ssh/authorized_keys"
-systemctl --root="$root" enable shennong-devices.service shennong-hardware.service \
+systemctl --root="$root" enable shennong-devices.service shennong-hardware.service shennong-touch.service \
     shennong-adsp.service shennong-usb-network.service shennong-expand-rootfs.service \
     shennong-ssh-hostkeys.service ssh.service
 # No automatic slot switch or boot-recovery request from a healthy Kali boot.

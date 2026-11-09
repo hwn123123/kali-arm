@@ -100,6 +100,7 @@ dnsmasq \
     --dhcp-range=172.31.14.2,172.31.14.20,255.255.255.0,12h \
     --dhcp-option=3 \
     --dhcp-option=6,172.31.14.1 \
+    --log-facility=/var/log/shennong-usb-dnsmasq.log \
     --pid-file=/run/shennong-usb-dnsmasq.pid
 
 log "USB NCM ready on $address using UDC $udc"

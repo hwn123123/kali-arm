@@ -1,0 +1,20 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+set -eu
+exec >>/var/log/shennong-touch.log 2>&1
+/usr/local/sbin/shennong-qup-check
+modprobe xiaomi_touch
+modprobe synaptics_tcm2
+sleep 1
+touch_power=/sys/devices/platform/synaptics_tcm.0/synaptics_tcm/power_state
+touch_raw=/sys/devices/virtual/touch/touch_dev/enable_touch_raw
+[ ! -w "$touch_power" ] || printf 'resume\n' > "$touch_power"
+[ ! -w "$touch_raw" ] || printf '0\n' > "$touch_raw"
+/usr/local/libexec/shennong-device-nodes --scan
+found=
+for input in /sys/class/input/input*; do
+    [ -r "$input/name" ] || continue
+    [ "$(cat "$input/name")" != synaptics_tcm_touch ] || found=yes
+done
+[ -n "$found" ] || { echo 'Synaptics did not expose a real touch input device' >&2; exit 1; }
+echo 'Stock Synaptics touch is ready in standard evdev mode'

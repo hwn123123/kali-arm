@@ -9,6 +9,17 @@ cd /tmp/kali-install
 [ "$(blockdev --getsize64 /dev/block/by-name/linux_root)" = 214748364800 ]
 sha256sum -c PAYLOAD-SHA256SUMS
 sha256sum -c PRESERVED-SHA256SUMS
+# The bootloader reads QUP microcode from the active slot. A blank qupfw_b
+# causes Invalid proto 255 on SPI/I2C and an ADSP QUP_ERR_FATAL reset. The
+# runtime firmware bind mounts cannot repair that earlier bootloader input.
+for part in qupfw_a qupfw_b; do
+    [ "$(blockdev --getsize64 /dev/block/by-name/$part)" = 131072 ]
+done
+[ "$(od -An -tx1 -N4 /dev/block/by-name/qupfw_a | tr -d ' \n')" = 7f454c46 ]
+cmp -s /dev/block/by-name/qupfw_a /dev/block/by-name/qupfw_b || {
+    echo 'Refusing install: repair B-slot QUP firmware from the verified working A-slot source in REC first' >&2
+    exit 72
+}
 for part in boot_b init_boot_b vendor_boot_b dtbo_b vbmeta_b; do
     case "$part" in
         boot_b|vendor_boot_b) size=100663296 ;;
