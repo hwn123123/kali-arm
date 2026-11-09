@@ -77,9 +77,12 @@ Plymouth on this kernel. The underlying GPU acceleration, modem/calls,
 camera and audio are still separate hardware-porting work; a working mobile
 shell is not a claim that the full phone is supported.
 
-The stock `qca_cld3_kiwi_v2` driver now exposes `wlan0` in station mode and
-NetworkManager successfully scans nearby access points. Association, DHCP and
-Internet access still require an owner-selected Wi-Fi network for validation.
+The stock `qca_cld3_kiwi_v2` driver exposes `wlan0` in station mode.
+NetworkManager scan, connection to the owner's selected network, DHCP and an
+HTTPS request to kali.org were verified live. After reboot, Wi-Fi reconnected
+automatically and received a new DHCP lease. Startup brightness was read back
+as 4095/4095. Both the real lock-screen image and desktop settings were checked
+after loading the Phosh-specific schema defaults.
 `shennong-wifi.service` supplies the stock CNSS `fs_ready` hand-off after module
 loading. All connection settings remain under Kali's normal NetworkManager.
 Supply `SHENNONG_WIFI_CONFIG=/path/to/stock/WCNSS_qcom_cfg.ini` when building or
