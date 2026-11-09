@@ -16,6 +16,17 @@ picture-options='zoom'
 picture-uri='file:///usr/share/backgrounds/shennong/blue-dragon.png'
 picture-options='zoom'
 
+# Phosh ships desktop-specific defaults, which take precedence over the
+# generic GNOME keys above. Cover both variants for fresh mobile sessions.
+[org.gnome.desktop.background:Phosh]
+picture-uri='file:///usr/share/backgrounds/shennong/blue-dragon.png'
+picture-uri-dark='file:///usr/share/backgrounds/shennong/blue-dragon.png'
+picture-options='zoom'
+
+[org.gnome.desktop.screensaver:Phosh]
+picture-uri='file:///usr/share/backgrounds/shennong/blue-dragon.png'
+picture-options='zoom'
+
 [org.gnome.settings-daemon.plugins.power]
 # Start at the owner's requested maximum instead of applying sensor dimming.
 # Normal idle blanking and the interactive brightness slider remain available.
