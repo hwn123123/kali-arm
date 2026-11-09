@@ -1,0 +1,14 @@
+[Unit]
+Description=Apply shennong startup display defaults
+Wants=systemd-backlight@backlight:panel0-backlight.service
+After=systemd-backlight@backlight:panel0-backlight.service shennong-touch.service
+Before=shennong-phosh.service
+ConditionPathExists=/sys/class/backlight/panel0-backlight/brightness
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/shennong-display-defaults
+RemainAfterExit=yes
+
+[Install]
+WantedBy=graphical.target

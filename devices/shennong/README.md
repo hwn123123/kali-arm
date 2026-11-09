@@ -51,6 +51,13 @@ the 1440x3200 panel to 60 Hz at scale 3. The vendor panel dimensions are
 corrected in the device's Phoc configuration. Automatic
 `boot-recovery` arming is disabled.
 
+The desktop and lock screen use the project-generated cartoon blue-dragon
+wallpaper under `rootfs-overlay/usr/share/backgrounds/shennong/`. The original
+PNG is part of the source. `shennong-display-defaults.service` sets the stock
+panel to its real `max_brightness` once per boot, after systemd restores its
+saved backlight state and before Phosh starts. The slider remains usable;
+automatic ambient dimming defaults off and normal idle blanking stays enabled.
+
 Deploy only from authenticated REC, using
 `tools/install-from-recovery.sh` and a per-deployment payload directory in RAM.
 It requires checksums for every payload and every preserved A/REC partition,
@@ -66,9 +73,19 @@ The stock kernel has no virtual terminals. `shennong-phosh.service` therefore
 uses an unprivileged PAM session on seat0 with the upstream seatd service in
 non-VT mode. This also fixes logind brightness/power permissions; no device
 nodes are made world-writable to bypass seat management. Device drop-ins skip
-Plymouth on this kernel. The underlying GPU acceleration, Wi-Fi, modem/calls,
+Plymouth on this kernel. The underlying GPU acceleration, modem/calls,
 camera and audio are still separate hardware-porting work; a working mobile
 shell is not a claim that the full phone is supported.
+
+The stock `qca_cld3_kiwi_v2` driver now exposes `wlan0` in station mode and
+NetworkManager successfully scans nearby access points. Association, DHCP and
+Internet access still require an owner-selected Wi-Fi network for validation.
+`shennong-wifi.service` supplies the stock CNSS `fs_ready` hand-off after module
+loading. All connection settings remain under Kali's normal NetworkManager.
+Supply `SHENNONG_WIFI_CONFIG=/path/to/stock/WCNSS_qcom_cfg.ini` when building or
+configuring a root. The input is hash-pinned by `tools/install-wifi-config.sh`;
+the vendor file itself stays private. Without it, the root configurator
+explicitly disables Wi-Fi rather than starting an incomplete driver profile.
 
 The ADSP crash and SPI `Invalid proto 255` errors were traced to an entirely
 zero-filled 128 KiB `qupfw_b`. In REC, the valid unchanged A copy was backed up,
@@ -220,6 +237,7 @@ devices/shennong/tools/build-android-bootmanager-module.sh \
 
    ```bash
    sudo SHENNONG_KERNEL_BUNDLE=/path/to/shennong-kernel-prebuilt-6.1.138.tar.zst \
+     SHENNONG_WIFI_CONFIG=/path/to/stock/WCNSS_qcom_cfg.ini \
      ./shennong.sh
    ```
 

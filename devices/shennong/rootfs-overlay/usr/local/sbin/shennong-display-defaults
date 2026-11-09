@@ -1,0 +1,12 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# Apply the owner's startup brightness once, before the mobile session.
+set -eu
+panel=/sys/class/backlight/panel0-backlight
+maximum=$(cat "$panel/max_brightness")
+case "$maximum" in ''|*[!0-9]*) echo 'Invalid panel brightness range' >&2; exit 1;; esac
+[ "$maximum" -gt 0 ]
+printf '%s\n' "$maximum" >"$panel/brightness"
+actual=$(cat "$panel/brightness")
+[ "$actual" = "$maximum" ] || { echo 'Could not set startup brightness' >&2; exit 1; }
+printf 'Startup panel brightness: %s/%s (100%%)\n' "$actual" "$maximum"

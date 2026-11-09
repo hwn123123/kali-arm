@@ -1,0 +1,30 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# Bring up the stock WLAN driver; NetworkManager owns all network policy.
+set -eu
+/usr/local/sbin/shennong-qup-check
+[ -d /vendor/firmware_mnt/image/kiwi ] || {
+    echo 'Stock kiwi firmware is not mounted' >&2; exit 1;
+}
+[ -s /usr/lib/firmware/wlan/qca_cld/kiwi_v2/WCNSS_qcom_cfg.ini ] || {
+    echo 'The private, validated WLAN configuration is missing' >&2; exit 1;
+}
+path_file=/sys/module/firmware_class/parameters/path
+current=$(cat "$path_file")
+case ",$current," in
+    *,/usr/lib/firmware,*) ;;
+    *) printf '/usr/lib/firmware,%s' "$current" >"$path_file" ;;
+esac
+# depmod describes the verified vendor dependency closure. Avoid concurrent
+# board-driver modalias loading and leave STA/P2P management to nl80211.
+modprobe qca_cld3_kiwi_v2
+[ -w /sys/kernel/cnss/fs_ready ] && printf '1\n' >/sys/kernel/cnss/fs_ready
+for attempt in $(seq 1 40); do
+    if [ -d /sys/class/net/wlan0/phy80211 ]; then
+        echo 'Stock Wi-Fi station interface is ready for NetworkManager'
+        exit 0
+    fi
+    sleep 1
+done
+echo 'Stock Wi-Fi did not expose wlan0 within 40 seconds' >&2
+exit 1

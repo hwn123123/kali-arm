@@ -1,0 +1,14 @@
+[Unit]
+Description=Stock Wi-Fi hardware compatibility for Kali
+Requires=shennong-hardware.service
+After=shennong-hardware.service shennong-adsp.service
+Before=NetworkManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/shennong-wifi
+RemainAfterExit=yes
+TimeoutStartSec=60
+
+[Install]
+WantedBy=multi-user.target

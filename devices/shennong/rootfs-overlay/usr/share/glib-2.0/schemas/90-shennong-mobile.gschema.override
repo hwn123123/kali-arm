@@ -8,8 +8,15 @@ auto-maximize=true
 scale-to-fit=true
 
 [org.gnome.desktop.background]
-picture-uri='file:///usr/share/backgrounds/kali/kali-glitch-16x9.jpg'
-picture-uri-dark='file:///usr/share/backgrounds/kali/kali-glitch-16x9.jpg'
+picture-uri='file:///usr/share/backgrounds/shennong/blue-dragon.png'
+picture-uri-dark='file:///usr/share/backgrounds/shennong/blue-dragon.png'
+picture-options='zoom'
 
 [org.gnome.desktop.screensaver]
-picture-uri='file:///usr/share/backgrounds/kali/kali-glitch-16x9.jpg'
+picture-uri='file:///usr/share/backgrounds/shennong/blue-dragon.png'
+picture-options='zoom'
+
+[org.gnome.settings-daemon.plugins.power]
+# Start at the owner's requested maximum instead of applying sensor dimming.
+# Normal idle blanking and the interactive brightness slider remain available.
+ambient-enabled=false

@@ -16,6 +16,15 @@ done
 cp -a --no-preserve=ownership "$here/../rootfs-overlay/." "$root/"
 chmod 755 "$root/usr/local/sbin/"shennong-*
 bash "$here/build-native-helpers.sh" "$root"
+if [[ -n ${SHENNONG_WIFI_CONFIG:-} ]]; then
+    bash "$here/install-wifi-config.sh" "$root" "$SHENNONG_WIFI_CONFIG"
+fi
+if [[ -s $root/usr/lib/firmware/wlan/qca_cld/kiwi_v2/WCNSS_qcom_cfg.ini ]]; then
+    systemctl --root="$root" enable shennong-wifi.service
+else
+    systemctl --root="$root" disable shennong-wifi.service 2>/dev/null || true
+    echo 'Wi-Fi disabled: supply the private input SHENNONG_WIFI_CONFIG' >&2
+fi
 chroot "$root" usermod -aG sudo,input,video,render kali
 printf 'kali:123\n' | chroot "$root" chpasswd
 uid=$(awk -F: '$1=="kali" { print $3 }' "$root/etc/passwd")

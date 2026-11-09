@@ -122,6 +122,10 @@ if [ -n "${SHENNONG_AUTHORIZED_KEY_FILE:-}" ]; then
     devices/shennong/tools/configure-native-rootfs.sh \
         "${work_dir}" "${SHENNONG_AUTHORIZED_KEY_FILE}"
 else
+    if [[ -n ${SHENNONG_WIFI_CONFIG:-} ]]; then
+        bash devices/shennong/tools/install-wifi-config.sh "$work_dir" "$SHENNONG_WIFI_CONFIG"
+        systemctl --root="$work_dir" enable shennong-wifi.service
+    fi
     bash devices/shennong/tools/configure-ui.sh "${work_dir}"
 fi
 
