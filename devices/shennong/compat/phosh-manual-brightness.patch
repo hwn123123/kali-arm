@@ -1,0 +1,44 @@
+--- a/src/brightness-manager.c
++++ b/src/brightness-manager.c
+@@ -28,0 +29 @@
++#define BRIGHTNESS_KEY_MANUAL_BRIGHTNESS "manual-brightness"
+@@ -511,0 +513,3 @@
++  if (!self->auto_brightness.enabled)
++    g_settings_set_double (self->settings_brightness,
++                           BRIGHTNESS_KEY_MANUAL_BRIGHTNESS, value);
+@@ -513,0 +518,14 @@
++}
++
++
++static void
++on_manual_brightness_changed (PhoshBrightnessManager *self)
++{
++  double value;
++
++  if (!self->backlight || self->auto_brightness.enabled || self->setting_brightness)
++    return;
++
++  value = g_settings_get_double (self->settings_brightness, BRIGHTNESS_KEY_MANUAL_BRIGHTNESS);
++  phosh_backlight_set_relative (self->backlight, value);
++  on_backlight_brightness_changed (self, NULL, self->backlight);
+@@ -539 +557 @@
+-      on_backlight_brightness_changed (self, NULL, self->backlight);
++      on_manual_brightness_changed (self);
+@@ -817,0 +836,4 @@
++                            "changed::" BRIGHTNESS_KEY_MANUAL_BRIGHTNESS,
++                            G_CALLBACK (on_manual_brightness_changed),
++                            self);
++  g_signal_connect_swapped (self->settings_brightness,
+--- a/data/mobi.phosh.shell.gschema.xml
++++ b/data/mobi.phosh.shell.gschema.xml
+@@ -14,0 +15,10 @@
++    <key name="manual-brightness" type="d">
++      <default>1.0</default>
++      <range min="0.0" max="1.0"/>
++      <summary>Manual display brightness</summary>
++      <description>
++        Brightness selected with the shell's manual slider, normalized to
++        the backlight range. Restore it when the display is initialized.
++        Idle dimming does not change this setting.
++      </description>
++    </key>

@@ -1,8 +1,8 @@
 [Unit]
 Description=Phosh mobile session on shennong
 Requires=seatd.service shennong-touch.service
-Wants=dbus.socket shennong-display-defaults.service
-After=dbus.socket systemd-user-sessions.service seatd.service shennong-touch.service shennong-adsp.service shennong-display-defaults.service
+Wants=dbus.socket
+After=dbus.socket systemd-user-sessions.service seatd.service shennong-touch.service shennong-adsp.service
 Before=graphical.target
 Conflicts=lightdm.service phosh.service
 StartLimitIntervalSec=60
@@ -30,7 +30,6 @@ Environment=GSK_RENDERER=cairo
 Environment=GDK_BACKEND=wayland
 Environment=LIBGL_ALWAYS_SOFTWARE=1
 ExecStart=/usr/bin/phosh-session
-ExecStartPost=+/usr/local/sbin/shennong-display-defaults --session-ready
 Restart=on-failure
 RestartSec=5
 StandardInput=null

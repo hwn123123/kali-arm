@@ -53,13 +53,37 @@ corrected in the device's Phoc configuration. Automatic
 
 The desktop and lock screen use the project-generated cartoon blue-dragon
 wallpaper under `rootfs-overlay/usr/share/backgrounds/shennong/`. The original
-PNG is part of the source. `shennong-display-defaults.service` sets the stock
-panel to its real `max_brightness` after systemd restores its saved state.
-The session's startup hook reapplies it once Phosh's brightness manager is
-ready, then sends a targeted backlight udev event to synchronize the slider.
-This prevents the vendor's first DRM modeset from restoring an old dim value;
-it runs only during startup, without a background polling loop. The slider remains usable;
-automatic ambient dimming defaults off and normal idle blanking stays enabled.
+PNG is part of the source. Wallpaper/theme settings use writable GSettings
+defaults, never dconf locks or scripts that repeatedly overwrite user choices.
+
+Phosh 0.58 does not ship a saved manual-brightness setting. The maintained
+`compat/phosh-manual-brightness.patch` adds `manual-brightness` to Phosh's own
+`mobi.phosh.shell.brightness` schema, defaults it to `1.0` and connects it to
+the existing brightness manager/slider. The slider saves the user's choice;
+idle dimming and automatic brightness do not overwrite it. Display startup
+restores that preference through Phosh's existing logind backlight backend.
+There is no separate runtime brightness script or startup override. Normal
+idle blanking remains enabled and automatic brightness stays user-configurable.
+
+Build standard Debian packages in an arm64 Kali builder with the normal
+Phosh build dependencies (`apt-get build-dep -Pnocheck,nodoc phosh`):
+
+```sh
+bash devices/shennong/tools/build-phosh-packages.sh /path/to/phosh-packages
+```
+
+Pass that directory as `SHENNONG_PHOSH_PACKAGE_DIR` when creating/configuring
+the image. The configurator also accepts an image which already contains the
+patched packages. The tarballs are hash-pinned; the patch and build instructions
+are in this repository, with the original upstream sources preserved.
+
+On-device validation used the real Phosh GTK slider through its accessibility
+interface: selecting `0.55` saved the same GSettings value and set the panel to
+510/4095. Idle dimming changed the temporary backlight to 160 without changing
+the preference, then restored 510; restarting the desktop also restored 510.
+Resetting the preference uses the native default `1.0`. Future UI changes must
+use the relevant Phosh/GNOME setting or backend, remain writable through its UI,
+and must not add parallel policy that overwrites user changes.
 
 Deploy only from authenticated REC, using
 `tools/install-from-recovery.sh` and a per-deployment payload directory in RAM.
@@ -244,6 +268,7 @@ devices/shennong/tools/build-android-bootmanager-module.sh \
    ```bash
    sudo SHENNONG_KERNEL_BUNDLE=/path/to/shennong-kernel-prebuilt-6.1.138.tar.zst \
      SHENNONG_WIFI_CONFIG=/path/to/stock/WCNSS_qcom_cfg.ini \
+     SHENNONG_PHOSH_PACKAGE_DIR=/path/to/phosh-packages \
      ./shennong.sh
    ```
 
