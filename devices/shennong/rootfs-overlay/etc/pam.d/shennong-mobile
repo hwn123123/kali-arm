@@ -1,0 +1,9 @@
+#%PAM-1.0
+# Systemd starts the unprivileged local graphical session; unlocking still
+# uses Phosh's normal PAM authentication and the user's password.
+auth required pam_permit.so
+@include common-account
+session required pam_env.so
+session required pam_limits.so
+session required pam_loginuid.so
+@include common-session

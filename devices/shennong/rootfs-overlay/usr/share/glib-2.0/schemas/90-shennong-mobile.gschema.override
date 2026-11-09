@@ -1,0 +1,15 @@
+[sm.puri.phosh]
+# Keep CLI/security tools visible as well as adaptive mobile applications.
+app-filter-mode=[]
+favorites=['org.gnome.Console.desktop', 'mobi.phosh.MobileSettings.desktop']
+
+[sm.puri.phoc]
+auto-maximize=true
+scale-to-fit=true
+
+[org.gnome.desktop.background]
+picture-uri='file:///usr/share/backgrounds/kali/kali-glitch-16x9.jpg'
+picture-uri-dark='file:///usr/share/backgrounds/kali/kali-glitch-16x9.jpg'
+
+[org.gnome.desktop.screensaver]
+picture-uri='file:///usr/share/backgrounds/kali/kali-glitch-16x9.jpg'

@@ -1,0 +1,40 @@
+[Unit]
+Description=Phosh mobile session on shennong
+Requires=seatd.service shennong-touch.service
+Wants=dbus.socket
+After=dbus.socket systemd-user-sessions.service seatd.service shennong-touch.service shennong-adsp.service
+Before=graphical.target
+Conflicts=lightdm.service phosh.service
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+# The stock kernel has no CONFIG_VT. Use seatd without a virtual terminal;
+# the normal upstream Phosh service requires /dev/tty0 and cannot start.
+User=kali
+PAMName=shennong-mobile
+WorkingDirectory=~
+Environment=LANG=C.UTF-8
+EnvironmentFile=-/etc/default/locale
+Environment=XDG_CURRENT_DESKTOP=Phosh:GNOME
+Environment=XDG_SESSION_DESKTOP=phosh
+Environment=XDG_SESSION_TYPE=wayland
+Environment=XDG_SESSION_CLASS=user
+Environment=XDG_SEAT=seat0
+Environment=LIBSEAT_BACKEND=seatd
+Environment=WLR_BACKENDS=drm,libinput
+Environment=WLR_RENDERER=pixman
+Environment=WLR_DRM_NO_MODIFIERS=1
+Environment=WLR_NO_HARDWARE_CURSORS=1
+Environment=GSK_RENDERER=cairo
+Environment=GDK_BACKEND=wayland
+Environment=LIBGL_ALWAYS_SOFTWARE=1
+ExecStart=/usr/bin/phosh-session
+Restart=on-failure
+RestartSec=5
+StandardInput=null
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=graphical.target

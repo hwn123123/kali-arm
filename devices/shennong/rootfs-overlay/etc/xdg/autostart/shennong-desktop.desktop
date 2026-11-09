@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Shennong display defaults
+Exec=/usr/local/sbin/shennong-desktop-session
+OnlyShowIn=XFCE;
+NoDisplay=true

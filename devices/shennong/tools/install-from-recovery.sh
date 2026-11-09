@@ -16,10 +16,17 @@ for part in qupfw_a qupfw_b; do
     [ "$(blockdev --getsize64 /dev/block/by-name/$part)" = 131072 ]
 done
 [ "$(od -An -tx1 -N4 /dev/block/by-name/qupfw_a | tr -d ' \n')" = 7f454c46 ]
-cmp -s /dev/block/by-name/qupfw_a /dev/block/by-name/qupfw_b || {
-    echo 'Refusing install: repair B-slot QUP firmware from the verified working A-slot source in REC first' >&2
-    exit 72
-}
+qup_a=$(sha256sum /dev/block/by-name/qupfw_a | cut -d ' ' -f 1)
+qup_b=$(sha256sum /dev/block/by-name/qupfw_b | cut -d ' ' -f 1)
+repair_qup=no
+if [ "$qup_a" != "$qup_b" ]; then
+    [ "$qup_a" = 21153bd3d941b1215c7613870dcfd6f7d5291d2bf7d15ecb541176fadb249d43 ] && \
+    [ "$qup_b" = fa43239bcee7b97ca62f007cc68487560a39e19f74f3dde7486db3f98df8e471 ] || {
+        echo 'Refusing install: QUP mismatch is not the validated blank-B failure' >&2
+        exit 72
+    }
+    repair_qup=yes
+fi
 for part in boot_b init_boot_b vendor_boot_b dtbo_b vbmeta_b; do
     case "$part" in
         boot_b|vendor_boot_b) size=100663296 ;;
@@ -36,6 +43,16 @@ root_real=$(readlink -f /dev/block/by-name/linux_root)
 if grep -E "^($root_real|/dev/block/by-name/linux_root) " /proc/mounts; then
     echo 'linux_root is still mounted; refusing write' >&2
     exit 71
+fi
+if [ "$repair_qup" = yes ]; then
+    mkdir -p qup-before-repair
+    dd if=/dev/block/by-name/qupfw_a of=qup-before-repair/qupfw_a.img bs=4096
+    dd if=/dev/block/by-name/qupfw_b of=qup-before-repair/qupfw_b.img bs=4096
+    dd if=/dev/block/by-name/qupfw_a of=/dev/block/by-name/qupfw_b bs=4096
+    sync
+    [ "$(sha256sum /dev/block/by-name/qupfw_b | cut -d ' ' -f 1)" = "$qup_a" ]
+    [ "$(sha256sum /dev/block/by-name/qupfw_a | cut -d ' ' -f 1)" = "$qup_a" ]
+    echo 'Restored validated blank QUP B firmware from unchanged slot A'
 fi
 /nwrt/bin/simg2img linux_root-kali.simg /dev/block/by-name/linux_root
 sync

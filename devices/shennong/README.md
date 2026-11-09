@@ -29,18 +29,26 @@ The builder preserves the hash-verified PixelOS first-stage init used only for
 REC dispatch. The shared kernel, vendor ramdisk, DTBO and vbmeta remain the
 verified stock-compatible NWRT artifacts. They never replace slot A.
 
-For an offline Kali arm64 root with XFCE, LightDM, Xorg modesetting, libinput,
-BusyBox static and OpenSSH installed, apply the maintained profile:
+The default image uses **Phosh**, a portrait, touch-oriented phone shell, with
+Phoc/Wayland, Stevia's on-screen keyboard and the GNOME Console terminal. It
+does not use an Android desktop container or an X11-nested mobile shell. For an
+offline Kali arm64 root with those packages, seatd, BusyBox static and OpenSSH
+installed, apply the maintained profile:
 
 ```sh
 sudo bash devices/shennong/tools/configure-native-rootfs.sh \
   /path/to/kali-root /path/to/host.pub
 ```
 
-The profile creates a local `kali` / `kali` login, imports the supplied SSH
+The profile creates a local `kali` / `123` login (also the lock-screen password),
+defaults to Simplified Chinese with CJK fonts and the Asia/Shanghai time zone,
+imports the supplied SSH
 public key and generates unique SSH host keys on first boot. USB NCM is
 `172.31.14.1/24` and does not advertise an Internet gateway. Software display
-rendering is selected until the graphics stack is validated. Automatic
+rendering is selected until the graphics stack is validated. Phoc uses the
+working atomic DRM API, excludes the vendor's two virtual displays and sets
+the 1440x3200 panel to 60 Hz at scale 3. The vendor panel dimensions are
+corrected in the device's Phoc configuration. Automatic
 `boot-recovery` arming is disabled.
 
 Deploy only from authenticated REC, using
@@ -51,31 +59,36 @@ ext4 root and verifies the B-slot boot files. It does not switch slots or
 reboot automatically. Legacy fastboot installation commands below are retained
 for history and are not the current installation path.
 
-Current deployment status: the fresh Kali/XFCE root and B boot chain were
-written from REC and read-back checked on 2026-11-09. All preserved A-slot and
-REC hashes matched. Native Kali systemd, udev, D-Bus, USB NCM DHCP and key-based
-OpenSSH were verified live over USB on 2026-11-09. The base system ran beyond
-two minutes without automatic reboot. Xorg still crashes during modesetting
-initialization. Current corrections cover device-role selection, ConfigFS
-function links, standard /dev permissions, existing firmware bind mounts,
-block-device alias checks, virtual display exclusion, and stock ADSP startup
-for the battery/Type-C channel. The USB setup uses the vendor `mode=peripheral`
-control seen in working REC and does not wait for ADSP. ADSP integration still
-needs hardware validation. The native root configurator compiles the arm64
-device-node helper; set `CC` to an arm64 compiler if necessary. The local
-`80-drivers.rules` override leaves board drivers under explicit stock module
-ordering: concurrent modalias loads were observed blocking `uevent_show` and
-`async_synchronize_cookie`. External-device autoload remains enabled.
+Verified live on 2026-11-09: native Kali systemd/udev/D-Bus, USB NCM DHCP,
+key-based SSH, ADSP battery/Type-C startup, the native Phosh lock screen,
+Phoc's panel output and Stevia. The owner confirmed normal touch operation.
+The stock kernel has no virtual terminals. `shennong-phosh.service` therefore
+uses an unprivileged PAM session on seat0 with the upstream seatd service in
+non-VT mode. This also fixes logind brightness/power permissions; no device
+nodes are made world-writable to bypass seat management. Device drop-ins skip
+Plymouth on this kernel. The underlying GPU acceleration, Wi-Fi, modem/calls,
+camera and audio are still separate hardware-porting work; a working mobile
+shell is not a claim that the full phone is supported.
 
-ADSP startup was captured reaching remoteproc online, then immediately
-reporting `qup_os_island.c:151:QUP_ERR_FATAL` and resetting the device. SPI touch
-also reported `Invalid proto 255`. This matches the earlier NWRT blank-QUP
-firmware failure; current partition readback is required before claiming that
-root cause. `shennong-qup-check` and the REC installer refuse mismatched A/B QUP
-firmware so this condition cannot silently trigger ADSP on subsequent boots.
-The check never writes either slot. Display, touch, ADSP, Wi-Fi, modem and
-other hardware are not yet claimed to work in Kali. Temporary service masks
-used to isolate this failure are diagnostic only and are not part of the profile.
+The ADSP crash and SPI `Invalid proto 255` errors were traced to an entirely
+zero-filled 128 KiB `qupfw_b`. In REC, the valid unchanged A copy was backed up,
+copied only to B and read-back checked. The repaired hash is
+`21153bd3d941b1215c7613870dcfd6f7d5291d2bf7d15ecb541176fadb249d43`.
+Touch and ADSP then started successfully. `shennong-qup-check` remains read-only;
+the REC installer repairs only that exact validated blank-B case and rejects
+other mismatches before any write.
+
+The device-node helper is compiled for arm64; set `CC` if necessary. The local
+`80-drivers.rules` override keeps board drivers under explicit stock module
+ordering, after concurrent modalias loads blocked `uevent_show` and
+`async_synchronize_cookie`. External-device autoload remains enabled. USB uses
+the vendor `mode=peripheral` control and does not wait for ADSP.
+
+XFCE is an optional fallback (`--desktop=xfce`), not the default phone UI.
+Its local Xorg modesetting module filters unsupported vendor DRM properties
+and guards null atoms, fixing the captured Xorg SIGSEGV. The pinned-source
+builder installs only under `/usr/local/lib/xorg-shennong`; Kali's Xorg package
+is unchanged. This module is not needed for native Phosh.
 
 ## Architecture
 
@@ -207,18 +220,21 @@ devices/shennong/tools/build-android-bootmanager-module.sh \
 
    ```bash
    sudo SHENNONG_KERNEL_BUNDLE=/path/to/shennong-kernel-prebuilt-6.1.138.tar.zst \
-     ./shennong.sh --minimal
+     ./shennong.sh
    ```
 
-   Omit `--minimal` for the default XFCE image. The artifact is written to
-   `images/` as a `tar.zst`, not as a repartitioned phone image.
+   This builds the Phosh phone image. `--desktop=phosh` is equivalent;
+   `--desktop=xfce` selects the optional desktop fallback and `--minimal`
+   selects a headless root. The device script selects its extra packages;
+   Kali's common desktop-selection code remains unchanged. The artifact is
+   written to `images/` as a `tar.zst`, not as a repartitioned phone image.
 
 2. Convert the validated rootfs archive into an Android sparse ext4 image for
    the exact 200 GiB `linux_root` partition:
 
    ```bash
    sudo devices/shennong/tools/build-linux-root-image.sh \
-     images/kali-linux-rolling-shennong-minimal-arm64-rootfs.tar.zst \
+     images/kali-linux-rolling-shennong-phosh-arm64-rootfs.tar.zst \
      devices/shennong/out/linux_root-kali.simg
    ```
 
@@ -230,7 +246,7 @@ devices/shennong/tools/build-android-bootmanager-module.sh \
 
    ```bash
    sudo devices/shennong/tools/build-linux-root-staging-image.sh \
-     images/kali-linux-rolling-shennong-minimal-arm64-rootfs.tar.zst \
+     images/kali-linux-rolling-shennong-phosh-arm64-rootfs.tar.zst \
      devices/shennong/out/linux_root-kali-staging.simg
    ```
 

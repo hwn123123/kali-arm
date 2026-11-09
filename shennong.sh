@@ -8,9 +8,35 @@ set -e
 
 hw_model=${hw_model:-"shennong"}
 architecture=${architecture:-"arm64"}
-desktop=${desktop:-"xfce"}
+desktop=${desktop:-"phosh"}
 hostname=${hostname:-"kali-shennong"}
 extra_custom_pkgs="busybox-static dnsmasq-base e2fsprogs file kmod usbutils libdrm2 util-linux xserver-xorg-video-fbdev xserver-xorg-input-libinput ${extra_custom_pkgs:-}"
+
+# Keep the mobile profile device-local. The shared upstream ARM builder
+# understands desktop environments and headless roots, but not Phosh.
+# Consume our extra desktop option here and pass all other options through.
+build_args=()
+while (( $# )); do
+    case "$1" in
+        --desktop=phosh) desktop=phosh ;;
+        --desktop)
+            [[ $# -ge 2 ]] || { echo 'Missing --desktop value' >&2; exit 2; }
+            desktop=$2
+            if [[ $2 != phosh ]]; then build_args+=("$1" "$2"); fi
+            shift ;;
+        --desktop=*) desktop=${1#*=}; build_args+=("$1") ;;
+        -m|--minimal|-s|--slim) desktop=none; build_args+=("$1") ;;
+        *) build_args+=("$1") ;;
+    esac
+    shift
+done
+set -- "${build_args[@]}"
+export SHENNONG_UI=$desktop
+if [[ $desktop == phosh ]]; then
+    desktop=none
+    variant=${variant:-phosh}
+    extra_custom_pkgs+=" phosh-core phosh-mobile-settings phosh-plugins gnome-console seatd xwayland python3-gi at-spi2-core grim wlr-randr kali-linux-headless locales fonts-noto-cjk"
+fi
 
 source ./common.d/base_image.sh
 
@@ -63,7 +89,7 @@ systemctl enable shennong-touch.service
 if ! id kali >/dev/null 2>&1; then
     useradd --create-home --shell /bin/bash --groups sudo kali
 fi
-passwd --lock kali
+printf 'kali:123\n' | chpasswd
 install -d -m700 -o kali -g kali /home/kali/.ssh
 install -d -m755 /opt/shennong-vendor
 install -d -m2755 -o root -g systemd-journal /var/log/journal
@@ -76,6 +102,10 @@ EOF
 
 include third_stage
 
+kali_uid="$(awk -F: '$1 == "kali" { print $3 }' "${work_dir}/etc/passwd")"
+kali_gid="$(awk -F: '$1 == "kali" { print $4 }' "${work_dir}/etc/passwd")"
+chown -R "${kali_uid}:${kali_gid}" "${work_dir}/home/kali"
+
 if [ -n "${SHENNONG_AUTHORIZED_KEY_FILE:-}" ]; then
     [ -f "$SHENNONG_AUTHORIZED_KEY_FILE" ] || {
         log "SSH public key file does not exist: $SHENNONG_AUTHORIZED_KEY_FILE" red
@@ -83,8 +113,6 @@ if [ -n "${SHENNONG_AUTHORIZED_KEY_FILE:-}" ]; then
     }
     install -m600 "$SHENNONG_AUTHORIZED_KEY_FILE" \
         "${work_dir}/home/kali/.ssh/authorized_keys"
-    kali_uid="$(awk -F: '$1 == "kali" { print $3 }' "${work_dir}/etc/passwd")"
-    kali_gid="$(awk -F: '$1 == "kali" { print $4 }' "${work_dir}/etc/passwd")"
     chown "${kali_uid}:${kali_gid}" \
         "${work_dir}/home/kali/.ssh/authorized_keys"
 fi
@@ -93,6 +121,8 @@ printf 'device=shennong\n' > "${work_dir}/etc/shennong-build"
 if [ -n "${SHENNONG_AUTHORIZED_KEY_FILE:-}" ]; then
     devices/shennong/tools/configure-native-rootfs.sh \
         "${work_dir}" "${SHENNONG_AUTHORIZED_KEY_FILE}"
+else
+    bash devices/shennong/tools/configure-ui.sh "${work_dir}"
 fi
 
 kernel_release="6.1.138-android14-11-g0c3d559bcd85-ab14529422"

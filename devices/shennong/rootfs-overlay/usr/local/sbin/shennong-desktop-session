@@ -1,0 +1,25 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# Seed usable portrait display defaults once, then preserve user changes.
+set -eu
+state=${XDG_CONFIG_HOME:-"$HOME/.config"}/shennong
+[ ! -e "$state/desktop-defaults-v1" ] || exit 0
+command -v xfconf-query >/dev/null
+set_property() {
+    channel=$1 property=$2 type=$3 value=$4
+    if xfconf-query -c "$channel" -p "$property" >/dev/null 2>&1; then
+        xfconf-query -c "$channel" -p "$property" -s "$value"
+    else
+        xfconf-query -c "$channel" -p "$property" -n -t "$type" -s "$value"
+    fi
+}
+set_property xsettings /Gdk/WindowScalingFactor int 2
+set_property xsettings /Gtk/CursorThemeSize int 48
+set_property xfce4-desktop /desktop-icons/icon-size uint 96
+wallpaper=/usr/share/backgrounds/kali/kali-glitch-16x9.jpg
+if [ -r "$wallpaper" ]; then
+    set_property xfce4-desktop /backdrop/screen0/monitorDSI-1/workspace0/last-image string "$wallpaper"
+    set_property xfce4-desktop /backdrop/screen0/monitorDSI-1/workspace0/image-style int 5
+fi
+mkdir -p "$state"
+touch "$state/desktop-defaults-v1"
