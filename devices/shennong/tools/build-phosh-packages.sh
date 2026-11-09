@@ -11,7 +11,7 @@ mkdir -p "$out_root"
 work=$(mktemp -d)
 trap 'rm -rf -- "$work"' EXIT
 version=0.58.0
-revision=0.58.0-1+shennong2
+revision=0.58.0-1+shennong4
 out="$out_root/$revision"
 mkdir -p "$out"
 for component in source debian; do
@@ -33,9 +33,10 @@ source_dir="$work/phosh-$version"
 tar -xJf "$work/debian.tar.xz" -C "$source_dir"
 patch -d "$source_dir" -p1 <"$here/../compat/phosh-manual-brightness.patch"
 patch -d "$source_dir" -p1 <"$here/../compat/phosh-native-home.patch"
+patch -d "$source_dir" -p1 <"$here/../compat/phosh-phone-home-layout.patch"
 {
     printf 'phosh (%s) unstable; urgency=medium\n\n' "$revision"
-    printf '  * Add a native phone home page backed by Phosh favorites and its wall clock.\n'
+    printf '  * Add a labelled two-row home grid and dock; size status icons and avoid the display cutout.\n'
     printf '  * Keep manual brightness in Phosh GSettings; default to full brightness.\n\n'
     printf ' -- Shennong port maintainers <root@shennong.invalid>  %s\n\n' "$(date -R)"
     cat "$source_dir/debian/changelog"

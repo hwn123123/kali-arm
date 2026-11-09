@@ -65,13 +65,16 @@ restores that preference through Phosh's existing logind backlight backend.
 There is no separate runtime brightness script or startup override. Normal
 idle blanking remains enabled and automatic brightness stays user-configurable.
 
-`compat/phosh-native-home.patch` changes Phosh's existing app-grid into a phone
-home page with Phosh's own clock, favorites, and an “All Apps” button. The full
-app grid and search stay available from that button, the Home button, or the
-normal Phosh page swipe. Favorite apps continue to use the `sm.puri.phosh`
-favorites setting and the existing long-press menu, so there is no second
-shortcut list or launcher process. Fresh installs start with Console, Mobile
-Settings, Firefox, and Files as favorites; users can change those in Phosh.
+`compat/phosh-native-home.patch` and `compat/phosh-phone-home-layout.patch` change
+Phosh's existing app-grid into a full-height phone-style home page with a large
+upper-left clock, a four-column shortcut grid, a bottom dock, and an “All Apps”
+button. The status clock uses Phosh’s own cutout layout with a Shennong display
+profile embedded in the shell. The full app grid and search remain available
+from the All Apps button, the Home button, or the normal Phosh page swipe.
+Shortcuts and dock entries come from the same `sm.puri.phosh` favorites setting
+and retain Phosh's existing long-press menu. Fresh installs start with
+Calculator, Parole, Mousepad, NetHunter, Atril, Ristretto, Volume Control, and
+Kali Tweaks above a dock with Console, Firefox, Files, and Mobile Settings. Users can reorder and change them in Phosh.
 
 Build standard Debian packages in an arm64 Kali builder with the normal
 Phosh build dependencies (`apt-get build-dep -Pnocheck,nodoc phosh`):
@@ -81,7 +84,7 @@ bash devices/shennong/tools/build-phosh-packages.sh /path/to/phosh-packages
 ```
 
 The script writes only the three runtime packages into the versioned
-`/path/to/phosh-packages/0.58.0-1+shennong2/` directory. Pass
+`/path/to/phosh-packages/0.58.0-1+shennong4/` directory. Pass
 `/path/to/phosh-packages` as `SHENNONG_PHOSH_PACKAGE_DIR` when creating or
 configuring the image. The configurator also accepts an image which already
 contains the patched packages. The tarballs are hash-pinned; patches and build

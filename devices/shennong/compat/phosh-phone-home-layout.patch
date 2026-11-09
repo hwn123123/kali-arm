@@ -1,0 +1,400 @@
+--- a/src/layout-manager.c
++++ b/src/layout-manager.c
+@@ -435,6 +435,21 @@
+   if (compatibles != NULL) {
+     info = gm_device_info_new ((const char * const *)compatibles);
+     g_set_object (&self->panel, gm_device_info_get_display_panel (info));
++
++    /* The Shennong vendor DT compatible is not in GMobile yet. Keep the
++     * hardware profile inside Phosh and feed it to the existing cutout layout. */
++    if (self->panel == NULL) {
++      for (guint i = 0; compatibles[i] != NULL; i++) {
++        if (!g_str_has_prefix (compatibles[i], "qcom,pineapple"))
++          continue;
++
++        self->panel = gm_display_panel_new_from_resource (
++          "/mobi/phosh/device/shennong-14pro-panel.json", &err);
++        if (self->panel == NULL)
++          g_warning ("Failed to load Shennong display profile: %s", err->message);
++        break;
++      }
++    }
+   }
+ 
+   if (self->panel) {
+--- a/src/ui/top-panel.ui
++++ b/src/ui/top-panel.ui
+@@ -325,7 +325,7 @@
+                             <child>
+                               <object class="PhoshBatteryInfo" id="batteryinfo">
+                                 <property name="visible">1</property>
+-                                <property name="pixel-size">16</property>
++                                <property name="pixel-size">20</property>
+                               </object>
+                             </child>
+                           </object>
+@@ -399,45 +399,45 @@
+   </template>
+   <object class="PhoshWWanInfo" id="wwaninfo">
+     <property name="margin-end">8</property>
+-    <property name="pixel-size">16</property>
++    <property name="pixel-size">20</property>
+     <property name="show-detail">1</property>
+     <style>
+       <class name="phosh-wwan-indicator"/>
+     </style>
+   </object>
+   <object class="PhoshWifiInfo" id="wifiinfo">
+-    <property name="pixel-size">16</property>
++    <property name="pixel-size">20</property>
+     <property name="margin-end">8</property>
+   </object>
+   <object class="PhoshBtInfo" id="btinfo">
+-    <property name="pixel-size">16</property>
++    <property name="pixel-size">20</property>
+     <property name="margin-end">8</property>
+   </object>
+   <object class="PhoshVpnInfo" id="vpn_info">
+-    <property name="pixel-size">16</property>
++    <property name="pixel-size">20</property>
+     <property name="margin-end">8</property>
+   </object>
+   <object class="PhoshConnectivityInfo" id="connectivity_info">
+-    <property name="pixel-size">16</property>
++    <property name="pixel-size">20</property>
+     <property name="margin-end">8</property>
+   </object>
+   <object class="PhoshDockedInfo" id="docked_info">
+-    <property name="pixel-size">16</property>
++    <property name="pixel-size">20</property>
+     <property name="margin-end">8</property>
+   </object>
+   <object class="PhoshHksInfo" id="hks_info_mic">
+     <property name="device-type">mic</property>
+-    <property name="pixel-size">16</property>
++    <property name="pixel-size">20</property>
+   </object>
+   <object class="PhoshHksInfo" id="hks_info_camera">
+     <property name="device-type">camera</property>
+-    <property name="pixel-size">16</property>
++    <property name="pixel-size">20</property>
+   </object>
+   <object class="PhoshFeedbackInfo" id="feedback_info">
+-    <property name="pixel-size">16</property>
++    <property name="pixel-size">20</property>
+   </object>
+   <object class="PhoshLocationInfo" id="location_info">
+-    <property name="pixel-size">16</property>
++    <property name="pixel-size">20</property>
+   </object>
+   <object class="GtkGestureMultiPress" id="click_gesture">
+     <property name="widget">PhoshTopPanel</property>
+--- a/src/top-panel.h
++++ b/src/top-panel.h
+@@ -14,7 +14,7 @@
+ G_DECLARE_FINAL_TYPE (PhoshTopPanel, phosh_top_panel, PHOSH, TOP_PANEL, PhoshDragSurface)
+ 
+ #define PHOSH_TOP_BAR_HEIGHT 32
+-#define PHOSH_TOP_BAR_ICON_PIXEL_SIZE 16
++#define PHOSH_TOP_BAR_ICON_PIXEL_SIZE 20
+ /* Minimum padding of network and indicator box to the left / right screen edge */
+ #define PHOSH_TOP_BAR_MIN_PADDING 9
+ /* Minimum padding of network and indicator box to the left / right display cutouts */
+--- a/src/phosh.gresources.xml
++++ b/src/phosh.gresources.xml
+@@ -2,6 +2,7 @@
+ <gresources>
+   <gresource prefix="/mobi/phosh">
+     <file preprocess="xml-stripblanks">ui/activity.ui</file>
++    <file>device/shennong-14pro-panel.json</file>
+     <file preprocess="xml-stripblanks">ui/app-auth-prompt.ui</file>
+     <file preprocess="xml-stripblanks">ui/app-grid-base-button.ui</file>
+     <file preprocess="xml-stripblanks">ui/app-grid-button.ui</file>
+--- a/src/app-grid.c
++++ b/src/app-grid.c
+@@ -50,6 +50,7 @@
+   GtkWidget *apps;
+   GtkWidget *favs;
+   GtkWidget *home_favs;
++  GtkWidget *home_dock;
+   GtkWidget *home_clock;
+   GtkWidget *home_date;
+   GtkWidget *favs_revealer;
+@@ -72,6 +73,8 @@
+   char *search_string;
+   gboolean filter_adaptive;
+   GSettings *settings;
++  GListStore *home_shortcuts;
++  GListStore *home_dock_items;
+   GStrv force_adaptive;
+   GSimpleActionGroup *actions;
+   PhoshAppFilterModeFlags filter_mode;
+@@ -411,8 +414,44 @@
+   gtk_widget_set_visible (btn, TRUE);
+ 
+   return btn;
++}
++
++static GtkWidget *
++create_home_launcher (gpointer item, gpointer self)
++{
++  GtkWidget *btn = phosh_app_grid_button_new (G_APP_INFO (item));
++
++  g_signal_connect (btn, "app-launched", G_CALLBACK (app_launched_cb), self);
++  gtk_widget_set_visible (btn, TRUE);
++
++  return btn;
++}
++
++
++static void
++sync_home_favorites (GListModel *favorites, PhoshAppGrid *self)
++{
++  PhoshAppGridPrivate *priv = phosh_app_grid_get_instance_private (self);
++  guint n_items = g_list_model_get_n_items (favorites);
++  guint n_dock_items = MIN (n_items, 4);
++  guint n_shortcuts = n_items - n_dock_items;
++
++  g_list_store_remove_all (priv->home_shortcuts);
++  g_list_store_remove_all (priv->home_dock_items);
++
++  for (guint i = 0; i < n_items; i++) {
++    GObject *app = G_OBJECT (g_list_model_get_item (favorites, i));
++
++    if (i < n_shortcuts)
++      g_list_store_append (priv->home_shortcuts, app);
++    else
++      g_list_store_append (priv->home_dock_items, app);
++
++    g_object_unref (app);
++  }
+ }
+ 
++
+ static void
+ toggle_favorites_revealer (PhoshAppGrid *self)
+ {
+@@ -434,6 +473,8 @@
+   PhoshAppGridPrivate *priv = phosh_app_grid_get_instance_private (self);
+ 
+   toggle_favorites_revealer (self);
++
++  sync_home_favorites (list, self);
+ 
+   /* We don't show favorites in the main list, filter them out */
+   gtk_filter_list_model_refilter (priv->model);
+@@ -476,11 +517,19 @@
+                            create_favorite_launcher,
+                            self,
+                            NULL);
++  priv->home_shortcuts = g_list_store_new (G_TYPE_OBJECT);
++  priv->home_dock_items = g_list_store_new (G_TYPE_OBJECT);
+   gtk_flow_box_bind_model (GTK_FLOW_BOX (priv->home_favs),
+-                           G_LIST_MODEL (favorites),
++                           G_LIST_MODEL (priv->home_shortcuts),
++                           create_home_launcher,
++                           self,
++                           NULL);
++  gtk_flow_box_bind_model (GTK_FLOW_BOX (priv->home_dock),
++                           G_LIST_MODEL (priv->home_dock_items),
+                            create_favorite_launcher,
+                            self,
+                            NULL);
++  sync_home_favorites (G_LIST_MODEL (favorites), self);
+   g_signal_connect (favorites,
+                     "items-changed",
+                     G_CALLBACK (favorites_changed),
+@@ -535,6 +584,8 @@
+ 
+   g_clear_object (&priv->open_folder);
+   g_clear_object (&priv->actions);
++  g_clear_object (&priv->home_shortcuts);
++  g_clear_object (&priv->home_dock_items);
+   g_clear_object (&priv->model);
+   g_clear_object (&priv->settings);
+   g_clear_handle_id (&priv->debounce, g_source_remove);
+@@ -773,6 +824,7 @@
+   gtk_widget_class_bind_template_child_private (widget_class, PhoshAppGrid, home_clock);
+   gtk_widget_class_bind_template_child_private (widget_class, PhoshAppGrid, home_date);
+   gtk_widget_class_bind_template_child_private (widget_class, PhoshAppGrid, home_favs);
++  gtk_widget_class_bind_template_child_private (widget_class, PhoshAppGrid, home_dock);
+   gtk_widget_class_bind_template_child_private (widget_class, PhoshAppGrid, folder_name_btn);
+   gtk_widget_class_bind_template_child_private (widget_class, PhoshAppGrid, folder_name_img);
+   gtk_widget_class_bind_template_child_private (widget_class, PhoshAppGrid, folder_name_entry);
+--- a/src/ui/app-grid.ui
++++ b/src/ui/app-grid.ui
+@@ -15,8 +15,9 @@
+           <object class="GtkBox" id="phone_home_page">
+             <property name="visible">1</property>
+             <property name="orientation">vertical</property>
+-            <property name="valign">center</property>
+-            <property name="spacing">12</property>
++            <property name="hexpand">1</property>
++            <property name="vexpand">1</property>
++            <property name="spacing">0</property>
+             <style>
+               <class name="phosh-phone-home"/>
+             </style>
+@@ -24,13 +25,15 @@
+               <object class="GtkBox">
+                 <property name="visible">1</property>
+                 <property name="orientation">vertical</property>
+-                <property name="halign">center</property>
+-                <property name="spacing">2</property>
+-                <property name="margin-top">8</property>
++                <property name="halign">start</property>
++                <property name="spacing">0</property>
++                <property name="margin-start">24</property>
++                <property name="margin-top">20</property>
+                 <property name="margin-bottom">12</property>
+                 <child>
+                   <object class="GtkLabel" id="home_clock">
+                     <property name="visible">1</property>
++                    <property name="halign">start</property>
+                     <property name="label">--:--</property>
+                     <style><class name="phosh-phone-home-clock"/></style>
+                   </object>
+@@ -38,6 +41,7 @@
+                 <child>
+                   <object class="GtkLabel" id="home_date">
+                     <property name="visible">1</property>
++                    <property name="halign">start</property>
+                     <property name="label"> </property>
+                     <style><class name="phosh-phone-home-date"/></style>
+                   </object>
+@@ -45,20 +49,25 @@
+               </object>
+             </child>
+             <child>
++              <object class="GtkBox">
++                <property name="visible">1</property>
++                <property name="vexpand">1</property>
++              </object>
++            </child>
++            <child>
+               <object class="GtkFlowBox" id="home_favs">
+                 <property name="visible">1</property>
+-                <property name="margin-start">3</property>
+-                <property name="margin-end">3</property>
+-                <property name="margin-top">6</property>
+-                <property name="margin-bottom">6</property>
++                <property name="margin-start">12</property>
++                <property name="margin-end">12</property>
++                <property name="margin-bottom">10</property>
+                 <property name="hexpand">1</property>
+                 <property name="homogeneous">1</property>
+                 <property name="min-children-per-line">4</property>
+                 <property name="max-children-per-line">4</property>
+                 <property name="selection-mode">none</property>
+                 <property name="activate-on-single-click">0</property>
+-                <property name="column-spacing">6</property>
+-                <property name="row-spacing">6</property>
++                <property name="column-spacing">8</property>
++                <property name="row-spacing">12</property>
+               </object>
+             </child>
+             <child>
+@@ -69,6 +78,24 @@
+                 <property name="label" translatable="yes">All Apps</property>
+                 <signal name="clicked" handler="show_all_apps" object="PhoshAppGrid" swapped="yes"/>
+                 <style><class name="phosh-phone-home-all-apps"/></style>
++              </object>
++            </child>
++            <child>
++              <object class="GtkFlowBox" id="home_dock">
++                <property name="visible">1</property>
++                <property name="margin-start">8</property>
++                <property name="margin-end">8</property>
++                <property name="margin-top">6</property>
++                <property name="margin-bottom">18</property>
++                <property name="hexpand">1</property>
++                <property name="homogeneous">1</property>
++                <property name="min-children-per-line">4</property>
++                <property name="max-children-per-line">4</property>
++                <property name="selection-mode">none</property>
++                <property name="activate-on-single-click">0</property>
++                <property name="column-spacing">0</property>
++                <property name="row-spacing">0</property>
++                <style><class name="phosh-phone-home-dock"/></style>
+               </object>
+             </child>
+           </object>
+--- a/src/stylesheet/common.css
++++ b/src/stylesheet/common.css
+@@ -30,7 +30,7 @@
+ 
+ .phosh-wwan-indicator,
+ phosh-top-panel .indicators {
+-  font-size: 13px;
++  font-size: 15px;
+   font-weight: 800;
+   font-feature-settings: "tnum";
+ }
+@@ -41,7 +41,7 @@
+ }
+ 
+ phosh-top-panel .phosh-topbar-clock {
+-  font-size: 16px;
++  font-size: 17px;
+ }
+ 
+ /* When moved to the left because of a cutout */
+@@ -397,26 +397,37 @@
+ }
+ 
+ .phosh-phone-home {
+-  padding: 8px 6px 18px;
++  padding: 8px 10px 8px;
+ }
+ 
+ .phosh-phone-home-clock {
+-  font-size: 3.2em;
++  font-size: 4.3em;
+   font-weight: 300;
++  font-feature-settings: "tnum";
+ }
+ 
+ .phosh-phone-home-date {
+-  font-size: 1.05em;
++  font-size: 1.2em;
+   opacity: 0.9;
+ }
+ 
+ .phosh-phone-home-all-apps {
+   border-radius: 9999px;
+-  padding: 8px 24px;
+-  margin: 6px 0;
+-  background: alpha(@phosh_bg_color,.45);
++  padding: 7px 22px;
++  margin: 0 0 3px;
++  background: alpha(@phosh_bg_color,.42);
+ }
+ 
++.phosh-phone-home-dock {
++  border-radius: 26px;
++  padding: 5px 2px;
++  background: alpha(@phosh_fg_color,.12);
++}
++
++.phosh-phone-home-dock flowboxchild {
++  padding: 2px;
++}
++
+ .phosh-phone-home-all-apps:active,
+ .phosh-phone-home-all-apps:hover {
+   background: alpha(@phosh_bg_color,.7);
+--- /dev/null
++++ b/src/device/shennong-14pro-panel.json
+@@ -0,0 +1,12 @@
++{
++  "name": "Shennong Xiaomi 14 Pro",
++  "x-res": 1440,
++  "y-res": 3200,
++  "border-radius": 72,
++  "cutouts": [
++    {
++      "name": "centered camera",
++      "path": "M 672,62 C 672,35 694,14 720,14 C 746,14 768,35 768,62 C 768,89 746,110 720,110 C 694,110 672,89 672,62 Z"
++    }
++  ]
++}

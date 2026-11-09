@@ -1,8 +1,12 @@
 [sm.puri.phosh]
 # Keep CLI/security tools visible as well as adaptive mobile applications.
 app-filter-mode=[]
-favorites=['org.gnome.Console.desktop', 'mobi.phosh.MobileSettings.desktop',
-           'firefox-esr.desktop', 'thunar.desktop']
+favorites=['mate-calc.desktop', 'org.xfce.Parole.desktop',
+           'org.xfce.mousepad.desktop', 'kali-nethunter.desktop',
+           'atril.desktop', 'org.xfce.ristretto.desktop',
+           'org.pulseaudio.pavucontrol.desktop', 'kali-tweaks.desktop',
+           'org.gnome.Console.desktop', 'firefox-esr.desktop',
+           'thunar.desktop', 'mobi.phosh.MobileSettings.desktop']
 
 [sm.puri.phoc]
 auto-maximize=true
